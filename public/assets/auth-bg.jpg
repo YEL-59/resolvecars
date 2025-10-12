@@ -1,0 +1,54 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#2d2d2d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="car-gradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#F4706B;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#F4706B;stop-opacity:0.1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="url(#bg-gradient)"/>
+  
+  <!-- Car silhouette -->
+  <g transform="translate(960, 540)">
+    <!-- Car body -->
+    <path d="M-400 0 L-350 -80 L-200 -120 L200 -120 L350 -80 L400 0 L350 60 L300 80 L-300 80 L-350 60 Z" 
+          fill="url(#car-gradient)" opacity="0.6"/>
+    
+    <!-- Car windows -->
+    <path d="M-300 -80 L-200 -100 L200 -100 L300 -80 L250 -40 L-250 -40 Z" 
+          fill="rgba(255,255,255,0.1)"/>
+    
+    <!-- Car wheels -->
+    <circle cx="-250" cy="60" r="40" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="250" cy="60" r="40" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="-250" cy="60" r="25" fill="rgba(0,0,0,0.3)"/>
+    <circle cx="250" cy="60" r="25" fill="rgba(0,0,0,0.3)"/>
+    
+    <!-- Car headlights -->
+    <ellipse cx="380" cy="-20" rx="15" ry="25" fill="rgba(255,255,255,0.8)"/>
+    <ellipse cx="380" cy="20" rx="15" ry="25" fill="rgba(255,255,255,0.8)"/>
+  </g>
+  
+  <!-- Abstract geometric shapes -->
+  <g opacity="0.1">
+    <circle cx="200" cy="200" r="100" fill="#F4706B"/>
+    <circle cx="1720" cy="880" r="150" fill="#F4706B"/>
+    <polygon points="100,900 200,800 300,900 200,1000" fill="#F4706B"/>
+    <polygon points="1620,100 1720,0 1820,100 1720,200" fill="#F4706B"/>
+  </g>
+  
+  <!-- Subtle grid pattern -->
+  <defs>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(244,112,107,0.1)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#grid)"/>
+</svg>
