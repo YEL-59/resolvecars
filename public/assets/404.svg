@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <style>
+    .car { animation: bounce 2s infinite; }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+  </style>
+  <rect width="800" height="600" fill="#f8fafc"/>
+  <g class="car">
+    <path d="M400 250 L500 250 Q520 250 520 270 L520 300 L380 300 L380 270 Q380 250 400 250" fill="#f43f5e"/>
+    <circle cx="410" cy="300" r="20" fill="#1e293b"/>
+    <circle cx="490" cy="300" r="20" fill="#1e293b"/>
+    <rect x="420" y="260" width="60" height="30" fill="#fafafa"/>
+  </g>
+  <path d="M200 350 L600 350" stroke="#e2e8f0" stroke-width="4"/>
+  <text x="400" y="200" font-family="Arial" font-size="120" font-weight="bold" fill="#1e293b" text-anchor="middle">404</text>
+  <text x="400" y="450" font-family="Arial" font-size="24" fill="#64748b" text-anchor="middle">Oops! Looks like you took a wrong turn.</text>
+</svg>

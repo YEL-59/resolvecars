@@ -20,6 +20,7 @@ import {
 import { CalendarIcon, MapPin, Clock, Car, Users } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const HeroSections = () => {
   const [pickupDate, setPickupDate] = useState();
@@ -83,7 +84,7 @@ const HeroSections = () => {
           </div>
 
           {/* Search Form */}
-          <div className="bg-white/95 backdrop-blur-sm p-6 rounded-xl max-w-5xl mx-auto">
+          <div className="bg-white/95 backdrop-blur-sm p-6 rounded-xl max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {/* Location */}
               <div className="space-y-2">
@@ -195,6 +196,26 @@ const HeroSections = () => {
                 <Button className="w-full bg-primary hover:bg-primary/90 text-white h-10">
                   Search Cars
                 </Button>
+              </div>
+
+              {/* Checkbox */}
+              <div className="flex items-center gap-2 ">
+                <Checkbox id="include-children" />
+                <label
+                  htmlFor="include-children"
+                  className="text-sm font-medium text-gray-900"
+                >
+                  Return in the same Store
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="include-children" />
+                <label
+                  htmlFor="include-children"
+                  className="text-sm font-medium text-gray-900"
+                >
+                  I am 25 years old or more
+                </label>
               </div>
             </div>
           </div>
