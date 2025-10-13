@@ -21,6 +21,8 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Star, Grid3X3, List } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { bookingStorage } from "@/lib/bookingStorage";
 
 // Sample car data
 const carsData = [
@@ -197,6 +199,7 @@ const sortOptions = [
 ];
 
 export default function CarsCardSection() {
+  const router = useRouter();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
@@ -204,6 +207,13 @@ export default function CarsCardSection() {
   const [sortBy, setSortBy] = useState("Name (A-Z)");
   const [visibleCars, setVisibleCars] = useState(10);
   const [viewMode, setViewMode] = useState("flex"); // Default to flex view
+
+  const handleBookNow = (car) => {
+    // Store the selected car in localStorage
+    bookingStorage.setCar(car);
+    // Redirect to booking page
+    router.push('/booking/step1');
+  };
 
   // Filter and sort cars
   const filteredCars = carsData
@@ -416,8 +426,14 @@ export default function CarsCardSection() {
                   </div>
 
                   <Link href={`/cars/${car.id}`}>
-                    <Button className="w-full">Book Now</Button>
+                    <Button className="w-full">View Details</Button>
                   </Link>
+                  <Button 
+                    className="w-full mt-2" 
+                    onClick={() => handleBookNow(car)}
+                  >
+                    Book Now
+                  </Button>
                 </div>
               </div>
             ))}
@@ -621,7 +637,10 @@ export default function CarsCardSection() {
                           view Details
                         </Button>
                       </Link>
-                      <Button className="bg-primary hover:bg-primary/90 text-white px-8">
+                      <Button 
+                        className="bg-primary hover:bg-primary/90 text-white px-8"
+                        onClick={() => handleBookNow(car)}
+                      >
                         Book now
                       </Button>
                     </div>

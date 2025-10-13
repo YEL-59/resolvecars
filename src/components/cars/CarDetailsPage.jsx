@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { useRouter } from 'next/navigation'
 import Layout from '../layout/Layout'
+import { bookingStorage } from '@/lib/bookingStorage'
 
 // Sample car data - in a real app, this would come from an API
 const carsData = [
@@ -47,8 +48,10 @@ export default function CarDetailsPage({ carId }) {
   const car = carsData.find(c => c.id === carId) || carsData[0]
 
   const handleBookNow = () => {
-    // Handle booking logic here
-    console.log('Booking car:', car.name)
+    // Store the selected car in localStorage
+    bookingStorage.setCar(car);
+    // Redirect to booking page
+    router.push('/booking/step1');
   }
 
   const handleExtraChange = (extra) => {
