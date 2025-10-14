@@ -98,7 +98,7 @@ const CarsHeroSection = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal border border-gray-300",
                     !pickupDate && "text-muted-foreground"
                   )}
                 >
@@ -131,7 +131,7 @@ const CarsHeroSection = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal border border-gray-300",
                     !returnDate && "text-muted-foreground"
                   )}
                 >

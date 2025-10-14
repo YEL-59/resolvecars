@@ -6,8 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, Users, Fuel, Settings, MapPin, Heart } from "lucide-react";
 import { favoritesStorage } from "@/lib/favoritesStorage";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { bookingStorage } from "@/lib/bookingStorage";
 
 const FeaturedSection = () => {
+  const router = useRouter();
   const [savedIds, setSavedIds] = useState([]);
 
   useEffect(() => {
@@ -18,6 +22,11 @@ const FeaturedSection = () => {
   const toggleFavorite = (vehicle) => {
     const list = favoritesStorage.toggle(vehicle);
     setSavedIds(list.map((v) => v.id));
+  };
+
+  const handleBookNow = (vehicle) => {
+    bookingStorage.setCar(vehicle);
+    router.push("/booking/step1");
   };
   const featuredVehicles = [
     {
@@ -110,13 +119,31 @@ const FeaturedSection = () => {
                   <span className="text-xs font-semibold bg-yellow-400 text-black px-3 py-1 rounded-full">
                     SEDAN
                   </span>
-                  <span className="text-sm font-medium text-gray-500">
-                    2025
-                  </span>
+                  <div className="relative flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-500">
+                      2025
+                    </span>
+                    <button
+                      aria-label={
+                        isSaved(vehicle.id) ? "Unsave vehicle" : "Save vehicle"
+                      }
+                      onClick={() => toggleFavorite(vehicle)}
+                      className=" rounded-full p-2 bg-white/90 hover:bg-white shadow border border-primary"
+                    >
+                      <Heart
+                        className={
+                          isSaved(vehicle.id)
+                            ? "w-5 h-5 text-rose-500"
+                            : "w-5 h-5 text-gray-700"
+                        }
+                        fill={isSaved(vehicle.id) ? "currentColor" : "none"}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Car Image */}
-                <div className="relative flex justify-center items-center mt-2 mb-4 h-[200px] w-full group-hover:scale-110 transition-all duration-300">
+                <div className="relative flex justify-center items-start mt-2 mb-4 h-[200px] w-full group-hover:scale-110 transition-all duration-300">
                   <Image
                     src={vehicle.image}
                     alt={vehicle.name}
@@ -124,16 +151,6 @@ const FeaturedSection = () => {
                     height={200}
                     className="object-contain h-full w-full"
                   />
-                  <button
-                    aria-label={isSaved(vehicle.id) ? "Unsave vehicle" : "Save vehicle"}
-                    onClick={() => toggleFavorite(vehicle)}
-                    className="absolute top-2 right-2 rounded-full p-2 bg-white/90 hover:bg-white shadow"
-                  >
-                    <Heart
-                      className={isSaved(vehicle.id) ? "w-5 h-5 text-rose-500" : "w-5 h-5 text-gray-700"}
-                      fill={isSaved(vehicle.id) ? "currentColor" : "none"}
-                    />
-                  </button>
                 </div>
 
                 {/* Car Info */}
@@ -194,13 +211,18 @@ const FeaturedSection = () => {
 
                   {/* Buttons */}
                   <div className="flex gap-3 mt-6">
+                    <Link href={`/cars/${vehicle.id}`} className="w-1/2">
+                      <Button
+                        variant="outline"
+                        className="w-full border-gray-300 text-gray-700 hover:bg-gray-100"
+                      >
+                        View Details
+                      </Button>
+                    </Link>
                     <Button
-                      variant="outline"
-                      className="w-1/2 border-gray-300 text-gray-700 hover:bg-gray-100"
+                      className="w-1/2 bg-[#F5807C] hover:bg-rose-600 text-white"
+                      onClick={() => handleBookNow(vehicle)}
                     >
-                      View Details
-                    </Button>
-                    <Button className="w-1/2 bg-[#F5807C] hover:bg-rose-600 text-white">
                       Book Now
                     </Button>
                   </div>

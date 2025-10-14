@@ -93,7 +93,7 @@ const HeroSections = () => {
                   Pick-up Location
                 </label>
                 <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm text-gray-700">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -112,7 +112,7 @@ const HeroSections = () => {
                   Return Location
                 </label>
                 <Select value={destination} onValueChange={setDestination}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm text-gray-700">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -136,7 +136,7 @@ const HeroSections = () => {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal border border-gray-300",
                         !pickupDate && "text-muted-foreground"
                       )}
                     >
@@ -169,7 +169,7 @@ const HeroSections = () => {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal border border-gray-300",
                         !returnDate && "text-muted-foreground"
                       )}
                     >
