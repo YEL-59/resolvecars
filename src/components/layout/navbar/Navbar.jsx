@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Phone, User, LogOut, Settings, Car } from "lucide-react";
+import { Phone, User, LogOut, Settings, Car, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export default function Navbar() {
@@ -44,9 +45,6 @@ export default function Navbar() {
               className="h-full w-full object-contain"
             />
           </div>
-          {/* <span className="text-xl font-semibold">
-            resolve<span className="text-red-500">cars</span>
-          </span> */}
         </Link>
 
         {/* Navigation Links */}
@@ -138,6 +136,63 @@ export default function Navbar() {
               </Button>
             </div>
           )}
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open menu">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="relative w-20 h-10">
+                    <Image
+                      src="/assets/logo.png"
+                      alt="ResolveCars Logo"
+                      fill
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4">
+                  {navLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="text-base text-gray-800">
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+                <div className="mt-6">
+                  {isLoggedIn ? (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarFallback>
+                          {user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 mt-2">
+                      <Button variant="ghost" asChild>
+                        <Link href="/auth/signin">Sign In</Link>
+                      </Button>
+                      <Button asChild>
+                        <Link href="/auth/signup">Sign Up</Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </nav>
