@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Star, Grid3X3, List } from "lucide-react";
+import { Star, Grid3X3, List, Heart } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { bookingStorage } from "@/lib/bookingStorage";
+import { favoritesStorage } from "@/lib/favoritesStorage";
 
 // Sample car data
 const carsData = [
@@ -207,6 +208,18 @@ export default function CarsCardSection() {
   const [sortBy, setSortBy] = useState("Name (A-Z)");
   const [visibleCars, setVisibleCars] = useState(10);
   const [viewMode, setViewMode] = useState("flex"); // Default to flex view
+  const [savedIds, setSavedIds] = useState([]);
+
+  useEffect(() => {
+    setSavedIds(favoritesStorage.getAll().map((v) => v.id));
+  }, []);
+
+  const isSaved = (id) => savedIds?.some((v) => String(v) === String(id));
+
+  const toggleFavorite = (car) => {
+    const list = favoritesStorage.toggle(car);
+    setSavedIds(list.map((v) => v.id));
+  };
 
   const handleBookNow = (car) => {
     // Store the selected car in localStorage
@@ -379,6 +392,16 @@ export default function CarsCardSection() {
                       {car.category}
                     </span>
                   </div>
+                  <button
+                    aria-label={isSaved(car.id) ? "Unsave vehicle" : "Save vehicle"}
+                    onClick={() => toggleFavorite(car)}
+                    className="absolute top-3 right-3 rounded-full p-2 bg-white/90 hover:bg-white shadow"
+                  >
+                    <Heart
+                      className={isSaved(car.id) ? "w-5 h-5 text-rose-500" : "w-5 h-5 text-gray-600"}
+                      fill={isSaved(car.id) ? "currentColor" : "none"}
+                    />
+                  </button>
                 </div>
 
                 <div className="p-4">
@@ -460,6 +483,16 @@ export default function CarsCardSection() {
                         {car.type}
                       </span>
                     </div>
+                    <button
+                      aria-label={isSaved(car.id) ? "Unsave vehicle" : "Save vehicle"}
+                      onClick={() => toggleFavorite(car)}
+                      className="absolute top-3 right-3 rounded-full p-2 bg-white/90 hover:bg-white shadow"
+                    >
+                      <Heart
+                        className={isSaved(car.id) ? "w-5 h-5 text-rose-500" : "w-5 h-5 text-gray-600"}
+                        fill={isSaved(car.id) ? "currentColor" : "none"}
+                      />
+                    </button>
                   </div>
 
                   {/* Right Section - Content */}

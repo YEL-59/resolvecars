@@ -1,10 +1,24 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, Users, Fuel, Settings, MapPin } from "lucide-react";
+import { Star, Users, Fuel, Settings, MapPin, Heart } from "lucide-react";
+import { favoritesStorage } from "@/lib/favoritesStorage";
 
 const FeaturedSection = () => {
+  const [savedIds, setSavedIds] = useState([]);
+
+  useEffect(() => {
+    setSavedIds(favoritesStorage.getAll().map((v) => v.id));
+  }, []);
+
+  const isSaved = (id) => savedIds?.some((v) => String(v) === String(id));
+  const toggleFavorite = (vehicle) => {
+    const list = favoritesStorage.toggle(vehicle);
+    setSavedIds(list.map((v) => v.id));
+  };
   const featuredVehicles = [
     {
       id: 1,
@@ -102,7 +116,7 @@ const FeaturedSection = () => {
                 </div>
 
                 {/* Car Image */}
-                <div className="flex justify-center items-center mt-2 mb-4 h-[200px] w-full group-hover:scale-110 transition-all duration-300">
+                <div className="relative flex justify-center items-center mt-2 mb-4 h-[200px] w-full group-hover:scale-110 transition-all duration-300">
                   <Image
                     src={vehicle.image}
                     alt={vehicle.name}
@@ -110,6 +124,16 @@ const FeaturedSection = () => {
                     height={200}
                     className="object-contain h-full w-full"
                   />
+                  <button
+                    aria-label={isSaved(vehicle.id) ? "Unsave vehicle" : "Save vehicle"}
+                    onClick={() => toggleFavorite(vehicle)}
+                    className="absolute top-2 right-2 rounded-full p-2 bg-white/90 hover:bg-white shadow"
+                  >
+                    <Heart
+                      className={isSaved(vehicle.id) ? "w-5 h-5 text-rose-500" : "w-5 h-5 text-gray-700"}
+                      fill={isSaved(vehicle.id) ? "currentColor" : "none"}
+                    />
+                  </button>
                 </div>
 
                 {/* Car Info */}

@@ -23,7 +23,7 @@ const CustomersaySection = () => {
       location: "New York, NY",
       rating: 5,
       review:
-        "Exceptional service! The car was spotless and the booking process was incredibly smooth. I'll definitely be using ResolveCars for all my future rentals.",
+        "Exceptional service! The car was spotless and the booking process was incredibly smooth. I'll definitely be using ResolveCars.",
       avatar:
         "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
     },
@@ -39,6 +39,26 @@ const CustomersaySection = () => {
     },
     {
       id: 3,
+      name: "Emily Rodriguez",
+      location: "Miami, FL",
+      rating: 5,
+      review:
+        "I've used many car rental services, but ResolveCars stands out for their attention to detail and customer service. Highly recommended!",
+      avatar:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+    },
+    {
+      id: 4,
+      name: "Emily Rodriguez",
+      location: "Miami, FL",
+      rating: 5,
+      review:
+        "I've used many car rental services, but ResolveCars stands out for their attention to detail and customer service. Highly recommended!",
+      avatar:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+    },
+    {
+      id: 5,
       name: "Emily Rodriguez",
       location: "Miami, FL",
       rating: 5,
@@ -82,13 +102,13 @@ const CustomersaySection = () => {
           }}
           className="max-w-5xl mx-auto relative"
         >
-          <CarouselContent className="-ml-2 md:-ml-4">
+          <CarouselContent className="-ml-2 md:-ml-4 p-2">
             {testimonials.map((testimonial) => (
               <CarouselItem
                 key={testimonial.id}
                 className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3"
               >
-                <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
+                <Card className="bg-white border-0  hover:shadow-md transition-shadow duration-300 group">
                   <CardContent className="p-8">
                     {/* Quote Icon */}
                     <div className="mb-6">
@@ -137,8 +157,8 @@ const CustomersaySection = () => {
           </CarouselContent>
 
           {/* Carousel Controls */}
-          <CarouselPrevious className="absolute -left-8 top-1/2 -translate-y-1/2 bg-white shadow-md hover:bg-gray-100" />
-          <CarouselNext className="absolute -right-8 top-1/2 -translate-y-1/2 bg-white shadow-md hover:bg-gray-100" />
+          <CarouselPrevious className="absolute -left-8 top-1/2 -translate-y-1/2 bg-white text-primary shadow-md hover:bg-gray-100 border border-primary" />
+          <CarouselNext className="absolute -right-8 top-1/2 -translate-y-1/2 bg-white text-primary shadow-md hover:bg-gray-100 border border-primary" />
         </Carousel>
       </div>
     </section>
