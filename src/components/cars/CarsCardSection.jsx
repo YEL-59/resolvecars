@@ -469,7 +469,7 @@ export default function CarsCardSection() {
                 key={car.id}
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
               >
-                <div className="flex flex-col md:flex-row justify-between items-center gap-5  px-10">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-5 px-4 md:px-10">
                   {/* Left Section - Image */}
                   <div className="  relative w-full md:w-80 h-64 md:h-[220px]">
                     <Image

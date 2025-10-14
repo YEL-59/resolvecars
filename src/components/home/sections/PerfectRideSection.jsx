@@ -43,7 +43,7 @@ const PerfectRideSection = () => {
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Choose Your Perfect Ride
           </h2>
-          <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-600 max-w-md mx-auto">
             From economy cars to luxury vehicles, we have something for everyone
           </p>
         </div>

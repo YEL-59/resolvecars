@@ -17,7 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, MapPin, Clock, Car, Users } from "lucide-react";
+import {
+  CalendarIcon,
+  MapPin,
+  Clock,
+  Car,
+  Users,
+  ArrowBigLeft,
+  ArrowRight,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,17 +55,17 @@ const HeroSections = () => {
           priority
         />
         {/* Dark overlay */}
-        {/* <div className="absolute inset-0 bg-black/40"></div> */}
+        <div className="absolute inset-0 bg-black/20"></div>
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center text-white">
+      <div className="relative z-10 container mx-auto px-4 text-center text-[#FAFAFA]">
         {/* Hero Text */}
-        <div className="mb-12">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
+        <div className="py-10 md:py-0">
+          <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold mb-6">
             Premium Car Rental
           </h1>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold mb-6 text-primary">
+          <h2 className="text-3xl md:text-6xl lg:text-7xl font-semibold mb-6 text-primary">
             Made Simple
           </h2>
           <p className="text-lg md:text-xl lg:text-2xl mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -73,6 +81,7 @@ const HeroSections = () => {
               className="bg-primary hover:bg-primary/90 text-white px-8 py-3 text-lg"
             >
               Explore Our Fleet
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button
               size="lg"
@@ -193,7 +202,7 @@ const HeroSections = () => {
 
               {/* Search Button */}
               <div className="flex items-end">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-white h-10">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-white text-lg ">
                   Search Cars
                 </Button>
               </div>
