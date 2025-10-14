@@ -24,174 +24,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { favoritesStorage } from "@/lib/favoritesStorage";
+import { carsData } from "@/lib/carsData";
 
-// Sample car data
-const carsData = [
-  {
-    id: 1,
-    name: "BMW 3 Series",
-    image: "/assets/cars/bmw-3.png",
-    type: "SEDAN",
-    year: 2025,
-    price: 299,
-    originalPrice: 399,
-    discount: 25,
-    rating: 4.0,
-    passengers: 4,
-    transmission: "automatic",
-    fuelType: "gasoline",
-    features: [
-      "Premium Sound System",
-      "BOSE Sound System",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Experience luxury and performance with the BMW 3 Series. Perfect for business trips...",
-  },
-  {
-    id: 3,
-    name: "Mercedes GLC",
-    image: "/assets/cars/mercedes-glc.png",
-    type: "SUV",
-    year: 2025,
-    price: 349,
-    originalPrice: 449,
-    discount: 20,
-    rating: 4.5,
-    passengers: 5,
-    transmission: "automatic",
-    fuelType: "hybrid",
-    features: [
-      "Premium Sound System",
-      "Panoramic Sunroof",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Luxury SUV with advanced features and comfortable interior...",
-  },
-  {
-    id: 4,
-    name: "Mercedes GLC",
-    image: "/assets/cars/mercedes-glc.png",
-    type: "SUV",
-    year: 2025,
-    price: 349,
-    originalPrice: 449,
-    discount: 20,
-    rating: 4.5,
-    passengers: 5,
-    transmission: "automatic",
-    fuelType: "hybrid",
-    features: [
-      "Premium Sound System",
-      "Panoramic Sunroof",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Luxury SUV with advanced features and comfortable interior...",
-  },
-  {
-    id: 5,
-    name: "Mercedes GLC",
-    image: "/assets/cars/mercedes-glc.png",
-    type: "SUV",
-    year: 2025,
-    price: 349,
-    originalPrice: 449,
-    discount: 20,
-    rating: 4.5,
-    passengers: 5,
-    transmission: "automatic",
-    fuelType: "hybrid",
-    features: [
-      "Premium Sound System",
-      "Panoramic Sunroof",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Luxury SUV with advanced features and comfortable interior...",
-  },
-  {
-    id: 6,
-    name: "Mercedes GLC",
-    image: "/assets/cars/mercedes-glc.png",
-    type: "SUV",
-    year: 2025,
-    price: 349,
-    originalPrice: 449,
-    discount: 20,
-    rating: 4.5,
-    passengers: 5,
-    transmission: "automatic",
-    fuelType: "hybrid",
-    features: [
-      "Premium Sound System",
-      "Panoramic Sunroof",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Luxury SUV with advanced features and comfortable interior...",
-  },
-  {
-    id: 7,
-    name: "Mercedes GLC",
-    image: "/assets/cars/mercedes-glc.png",
-    type: "SUV",
-    year: 2025,
-    price: 349,
-    originalPrice: 449,
-    discount: 20,
-    rating: 4.5,
-    passengers: 5,
-    transmission: "automatic",
-    fuelType: "hybrid",
-    features: [
-      "Premium Sound System",
-      "Panoramic Sunroof",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Luxury SUV with advanced features and comfortable interior...",
-  },
-  {
-    id: 8,
-    name: "Mercedes GLC",
-    image: "/assets/cars/mercedes-glc.png",
-    type: "SUV",
-    year: 2025,
-    price: 349,
-    originalPrice: 449,
-    discount: 20,
-    rating: 4.5,
-    passengers: 5,
-    transmission: "automatic",
-    fuelType: "hybrid",
-    features: [
-      "Premium Sound System",
-      "Panoramic Sunroof",
-      "Leather Seats",
-      "Premium coverage included",
-      "Fuel tank full/full",
-    ],
-    description:
-      "Luxury SUV with advanced features and comfortable interior...",
-  },
-  // Add more cars here...
-];
+// CarsData is now imported from shared module
 
-const categories = ["All Categories", "Luxury", "SUV", "Sports", "Electric"];
+const categories = ["All", ...Array.from(new Set(carsData.map((c) => c.type)))];
 const sortOptions = [
   "Name (A-Z)",
   "Price (Low to High)",
@@ -203,7 +40,7 @@ export default function CarsCardSection() {
   const router = useRouter();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [sortBy, setSortBy] = useState("Name (A-Z)");
   const [visibleCars, setVisibleCars] = useState(10);
@@ -235,8 +72,7 @@ export default function CarsCardSection() {
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       const matchesCategory =
-        selectedCategory === "All Categories" ||
-        car.category === selectedCategory;
+        selectedCategory === "All" || car.type === selectedCategory;
       const matchesPrice =
         car.price >= priceRange[0] && car.price <= priceRange[1];
       return matchesSearch && matchesCategory && matchesPrice;
@@ -389,8 +225,8 @@ export default function CarsCardSection() {
                   />
                   <div className="absolute top-4 left-4">
                     <span className="bg-primary text-white px-2 py-1 rounded text-sm">
-                      {car.category}
-                    </span>
+                      {car.type}
+                      </span>
                   </div>
                   <button
                     aria-label={isSaved(car.id) ? "Unsave vehicle" : "Save vehicle"}
@@ -444,7 +280,7 @@ export default function CarsCardSection() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span>Fuel:</span>
-                      <span className="font-medium">{car.fuel}</span>
+                      <span className="font-medium">{car.fuelType}</span>
                     </div>
                   </div>
 
