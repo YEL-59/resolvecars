@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Calendar, User, CreditCard, CheckCircle, Car, Star, Heart, Share2 } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { Button } from "@/components/ui/button";
 
 const steps = [
-  { id: 1, name: "Rental Details", path: "/booking/step1", icon: Calendar },
+  { id: 1, name: "Rental Details", path: "/booking/step1", icon: Car },
   { id: 2, name: "Customer Info", path: "/booking/step2", icon: User },
   { id: 3, name: "Payment", path: "/booking/step3", icon: CreditCard },
   { id: 4, name: "Review & Book", path: "/booking/step4", icon: CheckCircle },
@@ -31,6 +32,10 @@ export default function BookingLayout({ children }) {
   };
 
   const currentStep = getCurrentStep();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
 
   return (
     <Layout>
@@ -84,26 +89,41 @@ export default function BookingLayout({ children }) {
 
             {/* Stepper */}
             <div className="mt-6">
-              <div className="flex items-center">
+              <div className="flex items-center w-full">
                 {steps.map((step, index) => {
                   const Icon = step.icon;
-                  const isActive = currentStep === step.id;
+                  const isCurrent = currentStep === step.id;
+                  const isDone = currentStep > step.id;
+                  const isNext = currentStep + 1 === step.id;
+
+                  const circle = isCurrent
+                    ? "bg-rose-500 text-white ring-2 ring-rose-200"
+                    : isDone
+                    ? "bg-rose-200 text-rose-700"
+                    : isNext
+                    ? "bg-white text-rose-500 border border-rose-200"
+                    : "bg-white text-gray-600 border border-gray-300";
+
+                  const label = isCurrent ? "text-rose-600" : "text-gray-700";
+
                   return (
-                    <div key={step.id} className="flex items-center">
+                    <div key={step.id} className="flex items-center flex-1">
                       <div className="flex flex-col items-center">
-                        <div
-                          className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                            isActive ? "bg-rose-500 text-white" : "bg-rose-200 text-rose-700"
-                          }`}
-                        >
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${circle}`}>
                           <Icon className="w-5 h-5" />
                         </div>
-                        <p className={`mt-2 text-sm ${isActive ? "text-rose-600" : "text-gray-600"}`}>
-                          {step.name}
-                        </p>
+                        <p className={`mt-2 text-sm ${label}`}>{step.name}</p>
                       </div>
                       {index < steps.length - 1 && (
-                        <div className="flex-1 h-0.5 mx-6 bg-rose-100" />
+                        <div
+                          className={`h-[2px] mx-6 flex-1 bg-gradient-to-r ${
+                            isDone
+                              ? "from-rose-300 to-rose-100"
+                              : isCurrent
+                              ? "from-rose-500 to-rose-100"
+                              : "from-gray-200 to-gray-100"
+                          }`}
+                        />
                       )}
                     </div>
                   );

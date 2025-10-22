@@ -13,6 +13,7 @@ import Step2Customer from "./steps/Step2Customer";
 import Step3Payment from "./steps/Step3Payment";
 import Step4Review from "./steps/Step4Review";
 import { CarIcon, CheckIcon, CreditCardIcon, UserIcon } from "lucide-react";
+import BookingStepper from "./BookingStepper";
 
 // Combined schema for all steps; each page will validate only its relevant slice
 const schema = z.object({
@@ -193,6 +194,9 @@ export default function BookingRoot() {
                 </>
               )}
             </div>
+          </div>
+          <div className="px-5 py-4">
+            <BookingStepper current={step} />
           </div>
           <div className="p-3 space-y-8">
             <FormProvider {...form}>
