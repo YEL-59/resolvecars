@@ -13,7 +13,7 @@ import Step2Customer from "./steps/Step2Customer";
 import Step3Payment from "./steps/Step3Payment";
 import Step4Review from "./steps/Step4Review";
 import { CarIcon, CheckIcon, CreditCardIcon, UserIcon } from "lucide-react";
-import BookingStepper from "./BookingStepper";
+// removed: import BookingStepper from "./BookingStepper";
 
 // Combined schema for all steps; each page will validate only its relevant slice
 const schema = z.object({
@@ -168,7 +168,6 @@ export default function BookingRoot() {
           <div className="bg-white  ">
             <div className="text-2xl font-normal text-primary bg-[#F7F8FA] py-5 px-5 rounded-t-lg shadow-sm">
               {/* here i add car icon before text {step === 1 && "   Rental Details"} */}
-
               {step === 1 && (
                 <>
                   <CarIcon className="inline-block w-6 h-6 mr-2" /> Rental
@@ -195,9 +194,10 @@ export default function BookingRoot() {
               )}
             </div>
           </div>
-          <div className="px-5 py-4">
+          {/* removed inner BookingStepper to avoid duplicate */}
+          {/* <div className="px-5 py-4">
             <BookingStepper current={step} />
-          </div>
+          </div> */}
           <div className="p-3 space-y-8">
             <FormProvider {...form}>
               {step === 1 && <Step1Rental onNext={() => goTo(2)} />}
