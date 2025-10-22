@@ -16,7 +16,7 @@ export default function BookingSuccess() {
     // Get all booking data
     const allData = bookingStorage.getData();
     
-    if (!allData || !allData.selectedCar) {
+    if (!allData || !allData.selectedCar || !allData.step1 || !allData.step2 || !allData.step3) {
       router.push('/cars');
       return;
     }
@@ -129,8 +129,8 @@ export default function BookingSuccess() {
                 <div className="space-y-3">
                   <h4 className="font-medium">Rental Period</h4>
                   <div className="text-sm space-y-1">
-                    <p><span className="font-medium">Pickup Date:</span> {bookingData.step1.pickupDate}</p>
-                    <p><span className="font-medium">Drop-off Date:</span> {bookingData.step1.dropoffDate}</p>
+                    <p><span className="font-medium">Pickup Date:</span> {bookingData?.step1?.pickupDate || 'N/A'}</p>
+                    <p><span className="font-medium">Drop-off Date:</span> {bookingData?.step1?.dropoffDate || 'N/A'}</p>
                     <p><span className="font-medium">Duration:</span> {totalDays} day{totalDays > 1 ? 's' : ''}</p>
                   </div>
                 </div>
@@ -141,13 +141,13 @@ export default function BookingSuccess() {
                     Locations
                   </h4>
                   <div className="text-sm space-y-1">
-                    <p><span className="font-medium">Pickup:</span> {bookingData.step1.pickupLocation}</p>
-                    <p><span className="font-medium">Drop-off:</span> {bookingData.step1.dropoffLocation}</p>
+                    <p><span className="font-medium">Pickup:</span> {bookingData?.step1?.pickupLocation || 'N/A'}</p>
+                    <p><span className="font-medium">Drop-off:</span> {bookingData?.step1?.dropoffLocation || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
-              {bookingData.step1.requirements && (
+              {bookingData?.step1?.requirements && (
                 <div className="mt-6 pt-4 border-t">
                   <h4 className="font-medium mb-2">Special Requirements</h4>
                   <p className="text-sm text-gray-600">{bookingData.step1.requirements}</p>
@@ -167,14 +167,14 @@ export default function BookingSuccess() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-2">
-                  <p><span className="font-medium">Name:</span> {bookingData.step2.firstName} {bookingData.step2.lastName}</p>
-                  <p><span className="font-medium">Email:</span> {bookingData.step2.email}</p>
-                  <p><span className="font-medium">Phone:</span> {bookingData.step2.phone}</p>
+                  <p><span className="font-medium">Name:</span> {bookingData?.step2?.firstName || 'N/A'} {bookingData?.step2?.lastName || ''}</p>
+                  <p><span className="font-medium">Email:</span> {bookingData?.step2?.email || 'N/A'}</p>
+                  <p><span className="font-medium">Phone:</span> {bookingData?.step2?.phone || 'N/A'}</p>
                 </div>
                 <div className="space-y-2">
-                  <p><span className="font-medium">Age:</span> {bookingData.step2.age}</p>
-                  <p><span className="font-medium">License Number:</span> {bookingData.step2.licenseNumber}</p>
-                  <p><span className="font-medium">License Expires:</span> {bookingData.step2.licenseExpiry}</p>
+                  <p><span className="font-medium">Age:</span> {bookingData?.step2?.age || 'N/A'}</p>
+                  <p><span className="font-medium">License Number:</span> {bookingData?.step2?.licenseNumber || 'N/A'}</p>
+                  <p><span className="font-medium">License Expires:</span> {bookingData?.step2?.licenseExpiry || 'N/A'}</p>
                 </div>
               </div>
             </CardContent>
@@ -232,10 +232,10 @@ export default function BookingSuccess() {
                 <div className="pt-4 border-t">
                   <div className="flex items-center gap-2 text-sm">
                     <CreditCard className="w-4 h-4" />
-                    <span>Paid with {bookingData.step3.paymentMethod === 'credit' ? 'Credit Card' : bookingData.step3.paymentMethod === 'debit' ? 'Debit Card' : 'PayPal'}</span>
+                    <span>Paid with {bookingData?.step3?.paymentMethod === 'credit' ? 'Credit Card' : bookingData?.step3?.paymentMethod === 'debit' ? 'Debit Card' : 'PayPal'}</span>
                   </div>
                   <p className="text-xs text-gray-600 mt-1">
-                    **** **** **** {bookingData.step3.cardNumber.slice(-4)}
+                    **** **** **** {bookingData?.step3?.cardNumber?.slice(-4) || '****'}
                   </p>
                 </div>
               </div>
