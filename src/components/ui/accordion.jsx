@@ -6,10 +6,13 @@ import { ChevronDownIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-function Accordion({
-  ...props
-}) {
-  return <AccordionPrimitive.Root data-slot="accordion" {...props} />;
+function Accordion({ className, ...props }) {
+  return (
+    <AccordionPrimitive.Root
+      data-slot="accordion"
+      className={cn("grid gap-2", className)}
+      {...props} />
+  );
 }
 
 function AccordionItem({
@@ -19,7 +22,7 @@ function AccordionItem({
   return (
     <AccordionPrimitive.Item
       data-slot="accordion-item"
-      className={cn("border-b last:border-b-0", className)}
+      className={cn("border-b border-border last:border-b-0", className)}
       {...props} />
   );
 }
@@ -46,18 +49,15 @@ function AccordionTrigger({
   );
 }
 
-function AccordionContent({
-  className,
-  children,
-  ...props
-}) {
+function AccordionContent({ className, ...props }) {
   return (
     <AccordionPrimitive.Content
       data-slot="accordion-content"
-      className="data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down overflow-hidden text-sm"
-      {...props}>
-      <div className={cn("pt-0 pb-4", className)}>{children}</div>
-    </AccordionPrimitive.Content>
+      className={cn(
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 overflow-hidden text-sm",
+        className
+      )}
+      {...props} />
   );
 }
 

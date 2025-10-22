@@ -37,8 +37,9 @@ import { getCarById } from "@/lib/carsData";
 
 export default function CarDetailsPage({ carId }) {
   const router = useRouter();
-  const [selectedProtection, setSelectedProtection] = useState("basic");
+  const [selectedProtection, setSelectedProtection] = useState("standard");
   const [selectedExtras, setSelectedExtras] = useState([]);
+const [openPlanId, setOpenPlanId] = useState(null);
 
   // Find the car by ID
   const car = getCarById(carId) || {
@@ -103,13 +104,13 @@ export default function CarDetailsPage({ carId }) {
     {
       id: "standard",
       name: "Standard Protection",
-      price: 108,
+      price: 119,
       description:
         "Enhanced protection with reduced liability and comprehensive coverage.",
       selected: selectedProtection === "standard",
       details: {
         pricing: {
-          dailyRate: 108,
+          dailyRate: 119,
           securityDeposit: "$200",
           cancellation: "Free",
         },
@@ -126,13 +127,13 @@ export default function CarDetailsPage({ carId }) {
     {
       id: "premium",
       name: "Premium Protection",
-      price: 128,
+      price: 149,
       description:
         "Maximum protection with zero excess and comprehensive coverage.",
       selected: selectedProtection === "premium",
       details: {
         pricing: {
-          dailyRate: 128,
+          dailyRate: 149,
           securityDeposit: "None",
           cancellation: "Free",
         },
@@ -153,7 +154,7 @@ export default function CarDetailsPage({ carId }) {
     {
       id: "gps",
       name: "GPS Navigation",
-      price: 9,
+      price: 5,
       description: "Never get lost with premium GPS",
     },
     {
@@ -165,7 +166,7 @@ export default function CarDetailsPage({ carId }) {
     {
       id: "additional-driver",
       name: "Additional Driver",
-      price: 20,
+      price: 10,
       description: "Add a second authorized driver",
     },
   ];
@@ -175,14 +176,17 @@ export default function CarDetailsPage({ carId }) {
     return sum + (extra ? extra.price : 0);
   }, 0);
 
-  const total = car.price * 3 + totalExtras;
+  const selectedPlan = protectionPlans.find((p) => p.id === selectedProtection) || protectionPlans[0];
+  const baseDays = 3;
+  const baseRate = selectedPlan.price * baseDays;
+  const total = baseRate + totalExtras;
 
   return (
     <Layout>
       {" "}
       <div className="min-h-screen bg-white">
         {/* Header */}
-        <div className="bg-white border-b">
+        <div className="bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <button
@@ -201,6 +205,14 @@ export default function CarDetailsPage({ carId }) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Star className="w-4 h-4 text-yellow-500" />
+            <span className="font-medium">{car.rating}</span>
+            <span>({car.reviews} reviews)</span>
           </div>
         </div>
 
@@ -227,6 +239,9 @@ export default function CarDetailsPage({ carId }) {
                     <h1 className="text-3xl font-bold text-gray-900">
                       {car.name}
                     </h1>
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                      Premium
+                    </span>
                     <div className="flex items-center gap-1">
                       <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                       <span className="text-sm font-medium">{car.rating}</span>
@@ -316,145 +331,67 @@ export default function CarDetailsPage({ carId }) {
 
               {/* Protection Plans */}
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Protection Plans
-                </h2>
-                <Accordion type="single" collapsible className="w-full">
-                  {protectionPlans.map((plan) => (
-                    <AccordionItem key={plan.id} value={plan.id}>
-                      <AccordionTrigger
-                        className={`px-6 py-4 hover:no-underline ${
-                          plan.selected ? "bg-red-50 border border-red-200" : ""
-                        }`}
-                        onClick={() => setSelectedProtection(plan.id)}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex-1 text-left">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-medium text-lg">
-                                {plan.name}
-                              </h3>
-                              {plan.id === "basic" && (
-                                <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">
-                                  Recommended
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              {plan.description}
-                            </p>
+                <h2 className="text-xl font-bold text-gray-900">Protection Plans</h2>
+
+                 <div className="space-y-3">
+                   {protectionPlans.map((plan) => (
+                     <div key={plan.id} className="rounded-lg border border-gray-200">
+                       <div
+                         className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${
+                           plan.selected ? "bg-red-50 border-red-200" : "bg-white"
+                         }`}
+                         onClick={() => {
+                           setSelectedProtection(plan.id);
+                           setOpenPlanId((prev) => (prev === plan.id ? null : plan.id));
+                         }}
+                       >
+                         <div className="flex-1">
+                           <div className="flex items-center gap-3">
+                             <h3 className="font-medium">{plan.name}</h3>
+                             {plan.id === "basic" && (
+                               <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">Recommended</span>
+                             )}
+                           </div>
+                           <p className="text-xs text-gray-600 mt-1">
++                             {plan.id === "basic" && "Basic insurance • Standard vehicle maintenance"}
++                             {plan.id === "standard" && "$200 deposit • Theft protection • Roadside assistance"}
++                             {plan.id === "premium" && "No deposit • Full comprehensive coverage • Premium assistance"}
++                           </p>
+                            <p className="text-xs text-gray-500 mt-1">Free cancellation up to 24 hours before pickup</p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-bold">
-                              ${plan.price}/day
-                            </span>
-                            {plan.selected && (
-                              <ChevronRight className="w-5 h-5 text-red-500" />
-                            )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold">${plan.price} / day</span>
+                            <ChevronRight className={`w-5 h-5 transition-transform ${openPlanId === plan.id ? "rotate-90 text-red-400" : "text-gray-400"}`} />
                           </div>
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-6 pb-4">
-                        <Card
-                          className={`border ${
-                            plan.selected
-                              ? "border-red-200 bg-red-50"
-                              : "border-gray-200"
-                          }`}
-                        >
-                          <CardContent className="p-6">
-                            <div className="space-y-6">
-                              {/* Pricing Breakdown and Included Features */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Pricing Breakdown */}
-                                <div>
-                                  <h4 className="font-bold text-gray-900 mb-3">
-                                    Pricing Breakdown
-                                  </h4>
-                                  <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">
-                                        Daily Rate:
-                                      </span>
-                                      <span className="font-medium">
-                                        ${plan.details.pricing.dailyRate}/day
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">
-                                        Security Deposit:
-                                      </span>
-                                      <span className="font-medium">
-                                        {plan.details.pricing.securityDeposit}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-600">
-                                        Cancellation:
-                                      </span>
-                                      <span className="font-medium text-green-600">
-                                        {plan.details.pricing.cancellation}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Included Features */}
-                                <div>
-                                  <h4 className="font-bold text-gray-900 mb-3">
-                                    Included Features
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {plan.details.features.map(
-                                      (feature, index) => (
-                                        <div
-                                          key={index}
-                                          className="flex items-center gap-2 text-sm"
-                                        >
-                                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                          <span className="text-gray-700">
-                                            {feature}
-                                          </span>
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
+                        {openPlanId === plan.id && (
+                          <div className="px-4 pb-4">
+                            <div className="mt-3 grid md:grid-cols-2 gap-3 text-sm">
+                              <div className="space-y-1">
+                                <p className="font-medium">What’s included</p>
+                                <ul className="text-gray-600 list-disc pl-5">
+                                  {plan.details.features.map((f, i) => (
+                                    <li key={i}>{f}</li>
+                                  ))}
+                                </ul>
                               </div>
-
-                              {/* Cancellation Policy */}
-                              <div
-                                className={`p-4 rounded-lg border ${
-                                  plan.selected
-                                    ? "bg-red-50 border-red-200"
-                                    : "bg-gray-50 border-gray-200"
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div
-                                    className={`w-2 h-2 rounded-full mt-2 ${
-                                      plan.selected
-                                        ? "bg-red-500"
-                                        : "bg-gray-400"
-                                    }`}
-                                  ></div>
-                                  <div>
-                                    <h5 className="font-medium text-gray-900 mb-1">
-                                      Cancellation Policy
-                                    </h5>
-                                    <p className="text-sm text-gray-600">
-                                      {plan.details.cancellationPolicy}
-                                    </p>
-                                  </div>
+                              <div className="space-y-1">
+                                <p className="font-medium">Pricing & policy</p>
+                                <div className="text-gray-600">
+                                  <p>Daily rate: ${plan.details.pricing.dailyRate}</p>
+                                  <p>Security deposit: {plan.details.pricing.securityDeposit}</p>
+                                  <p>
+                                    Cancellation: {plan.details.cancellationPolicy || plan.details.pricing.cancellation}
+                                  </p>
                                 </div>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+</div>
+                         )}
+                      </div>
+                    ))}
+                  </div>
+
               </div>
 
               {/* Included Features */}
@@ -502,12 +439,16 @@ export default function CarDetailsPage({ carId }) {
                 <h2 className="text-xl font-bold text-gray-900">
                   Important Information
                 </h2>
-                <ul className="space-y-2 text-gray-600">
-                  <li>• Minimum age: 25 years</li>
-                  <li>• Valid driver's license required</li>
-                  <li>• Credit card for security deposit</li>
-                  <li>• Fuel policy: Return with same level</li>
-                </ul>
+                <Card className="bg-gray-50 border-gray-200">
+                  <CardContent className="p-4">
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Minimum age: 25 years</li>
+                      <li>• Valid driver's license required</li>
+                      <li>• Credit card for security deposit</li>
+                      <li>• Fuel policy: Return with same level</li>
+                    </ul>
+                  </CardContent>
+                </Card>
               </div>
 
               {/* Pickup Location */}
@@ -521,6 +462,9 @@ export default function CarDetailsPage({ carId }) {
                       <h3 className="font-medium text-lg">{car.location}</h3>
                       <p className="text-gray-600">{car.pickupInfo}</p>
                       <p className="text-sm text-gray-500">{car.available}</p>
+                      <div className="rounded-lg bg-gray-100 h-40 flex items-center justify-center text-gray-500">
+                        Map Preview
+                      </div>
                       <Button
                         variant="outline"
                         className="w-full border-red-500 text-red-500 hover:bg-red-50"
@@ -571,9 +515,9 @@ export default function CarDetailsPage({ carId }) {
                   {/* Base Rate */}
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-sm text-gray-600">
-                      Base rate (3 days)
+                      Base rate ({baseDays} days)
                     </span>
-                    <span className="text-sm font-medium">$267</span>
+                    <span className="text-sm font-medium">${baseRate}</span>
                   </div>
 
                   {/* Protection Plans Selection */}
@@ -598,7 +542,7 @@ export default function CarDetailsPage({ carId }) {
                             />
                             <label htmlFor={plan.id} className="text-sm">
                               {plan.name}
-                              {plan.id === "basic" && (
+                              {plan.id === "standard" && (
                                 <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                                   Included
                                 </span>
@@ -650,7 +594,7 @@ export default function CarDetailsPage({ carId }) {
                   </div>
 
                   {/* Total */}
-                  <div className="border-t pt-4 mb-6">
+                  <div className="pt-4 mb-6">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold">Total</span>
                       <span className="text-lg font-bold text-red-500">
