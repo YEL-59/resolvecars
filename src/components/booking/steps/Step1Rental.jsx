@@ -158,6 +158,7 @@ export default function Step1Rental({ onNext }) {
                         min={getTomorrowDate()}
                         className="bg-rose-50 border border-rose-100 focus-visible:ring-rose-200"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -178,6 +179,7 @@ export default function Step1Rental({ onNext }) {
                         min={getMinDropoffDate()}
                         className="bg-rose-50 border border-rose-100 focus-visible:ring-rose-200"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -199,6 +201,7 @@ export default function Step1Rental({ onNext }) {
                         type="time"
                         className="bg-rose-50 border border-rose-100 focus-visible:ring-rose-200"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -218,6 +221,7 @@ export default function Step1Rental({ onNext }) {
                         type="time"
                         className="bg-rose-50 border border-rose-100 focus-visible:ring-rose-200"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />

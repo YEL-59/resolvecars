@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { CarIcon, UserIcon, CreditCardIcon, CheckIcon } from "lucide-react";
 
 const steps = [
@@ -23,12 +24,16 @@ function circleClasses(status) {
 }
 
 function lineClasses(done) {
-  return done
-    ? "flex-1 h-0.5 bg-primary/40"
-    : "flex-1 h-0.5 bg-gray-200";
+  return done ? "flex-1 h-0.5 bg-primary/40" : "flex-1 h-0.5 bg-gray-200";
 }
 
-export default function BookingStepper({ current = 1 }) {
+export default function BookingStepper({ current = 1, allowForward = false, onGoTo }) {
+  const router = useRouter();
+  const goToStep = (key) => {
+    if (onGoTo) onGoTo(key);
+    else router.push(`/booking/step${key}`);
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between">
@@ -36,17 +41,23 @@ export default function BookingStepper({ current = 1 }) {
           const status = s.key < current ? "done" : s.key === current ? "current" : "todo";
           const nextDone = s.key < current;
           const Icon = s.Icon;
+          const canClick = allowForward || s.key <= current; // by default allow back/return only
           return (
             <React.Fragment key={s.key}>
-              <div className="flex flex-col items-center">
+              <button
+                type="button"
+                onClick={() => canClick && goToStep(s.key)}
+                className={`flex flex-col items-center bg-transparent p-0 border-none ${
+                  canClick ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+                }`}
+                aria-disabled={!canClick}
+              >
                 <div className={circleClasses(status)}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <span className="mt-2 text-sm text-gray-700">{s.label}</span>
-              </div>
-              {idx < steps.length - 1 && (
-                <div className={`mx-2 ${lineClasses(nextDone)}`} />
-              )}
+              </button>
+              {idx < steps.length - 1 && <div className={`mx-2 ${lineClasses(nextDone)}`} />}
             </React.Fragment>
           );
         })}

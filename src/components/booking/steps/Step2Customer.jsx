@@ -62,7 +62,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your first name" {...field} />
+                      <Input placeholder="Enter your first name" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -76,7 +76,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your last name" {...field} />
+                      <Input placeholder="Enter your last name" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -95,6 +95,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                         type="email"
                         placeholder="Enter your email address"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -113,6 +114,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                         type="tel"
                         placeholder="Enter your phone number"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -133,6 +135,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                       max="80"
                       placeholder="Enter your age"
                       {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -156,7 +159,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                 <FormItem>
                   <FormLabel>License Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your license number" {...field} />
+                    <Input placeholder="Enter your license number" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -170,7 +173,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                 <FormItem>
                   <FormLabel>License Expiry Date</FormLabel>
                   <FormControl>
-                    <Input type="date" min={getMinLicenseExpiry()} {...field} />
+                    <Input type="date" min={getMinLicenseExpiry()} {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -192,7 +195,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                 <FormItem>
                   <FormLabel>Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="Street address" {...field} />
+                    <Input placeholder="Street address" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -207,7 +210,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                   <FormItem>
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input placeholder="City" {...field} />
+                      <Input placeholder="City" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -220,7 +223,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                   <FormItem>
                     <FormLabel>ZIP Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="ZIP / Postal code" {...field} />
+                      <Input placeholder="ZIP / Postal code" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -232,7 +235,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Country</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Country" />

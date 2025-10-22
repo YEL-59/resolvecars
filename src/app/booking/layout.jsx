@@ -95,7 +95,8 @@ export default function BookingLayout({ children }) {
                   const isCurrent = currentStep === step.id;
                   const isDone = currentStep > step.id;
                   const isNext = currentStep + 1 === step.id;
-
+                  const canClick = true; // allow forward and backward navigation
+                    
                   const circle = isCurrent
                     ? "bg-rose-500 text-white ring-2 ring-rose-200"
                     : isDone
@@ -103,17 +104,26 @@ export default function BookingLayout({ children }) {
                     : isNext
                     ? "bg-white text-rose-500 border border-rose-200"
                     : "bg-white text-gray-600 border border-gray-300";
-
+                    
                   const label = isCurrent ? "text-rose-600" : "text-gray-700";
-
+                   
                   return (
                     <div key={step.id} className="flex items-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${circle}`}>
-                          <Icon className="w-5 h-5" />
+                      {canClick ? (
+                        <Link href={step.path} className="flex flex-col items-center cursor-pointer">
+                          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${circle}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <p className={`mt-2 text-sm ${label}`}>{step.name}</p>
+                        </Link>
+                      ) : (
+                        <div className="flex flex-col items-center cursor-not-allowed opacity-60">
+                          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${circle}`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <p className={`mt-2 text-sm ${label}`}>{step.name}</p>
                         </div>
-                        <p className={`mt-2 text-sm ${label}`}>{step.name}</p>
-                      </div>
+                      )}
                       {index < steps.length - 1 && (
                         <div
                           className={`h-[2px] mx-6 flex-1 bg-gradient-to-r ${
