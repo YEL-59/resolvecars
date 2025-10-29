@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,8 +33,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 const HeroSections = () => {
   const [pickupDate, setPickupDate] = useState();
   const [returnDate, setReturnDate] = useState();
+  const [pickupTime, setPickupTime] = useState("");
+  const [returnTime, setReturnTime] = useState("");
+  const [pickupDateOpen, setPickupDateOpen] = useState(false);
+  const [returnDateOpen, setReturnDateOpen] = useState(false);
   const [location, setLocation] = useState("");
   const [destination, setDestination] = useState("");
+  const [sameStore, setSameStore] = useState(true);
+
+  const pickupTimeRef = useRef(null);
+  const returnTimeRef = useRef(null);
   const locations = [
     { value: "new-york", label: "New York City" },
     { value: "los-angeles", label: "Los Angeles" },
@@ -93,61 +101,88 @@ const HeroSections = () => {
           </div>
 
           {/* Search Form */}
-          <div className="bg-white/95 backdrop-blur-sm p-6 rounded-xl max-w-7xl mx-auto">
+          <div className="bg-white/95 backdrop-blur-sm p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-              {/* Location */}
-              <div className="space-y-2">
+              {/* Locations (combined) */}
+              <div className="space-y-3 lg:col-span-2">
                 <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
-                  Pick-up Location
+                  Locations
                 </label>
-                <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm text-gray-700">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.value} value={loc.value}>
-                        {loc.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* desLocation */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Return Location
-                </label>
-                <Select value={destination} onValueChange={setDestination}>
-                  <SelectTrigger className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm text-gray-700">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.value} value={loc.value}>
-                        {loc.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Pick-up Location */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-700">Pick-up Location</label>
+                    <Select value={location} onValueChange={setLocation}>
+                      <SelectTrigger className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm text-gray-900">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.value} value={loc.value}>
+                            {loc.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Return Location (conditional) */}
+                  {!sameStore ? (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Return Location</label>
+                      <Select value={destination} onValueChange={setDestination}>
+                        <SelectTrigger className="w-full border border-gray-300 rounded-md px-4 py-2 text-sm text-gray-900">
+                          <SelectValue placeholder="Select location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locations.map((loc) => (
+                            <SelectItem key={loc.value} value={loc.value}>
+                              {loc.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Return Location</label>
+                      <div className="w-full border border-gray-200 rounded-md px-4 py-2 text-sm text-gray-700 bg-gray-50">
+                        Same as pick-up
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-6 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="same-store" checked={sameStore} onCheckedChange={(v) => setSameStore(!!v)} />
+                    <label htmlFor="same-store" className="text-sm font-medium text-gray-900">
+                      Return in the same Store
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="age-25-plus" />
+                    <label htmlFor="age-25-plus" className="text-sm font-medium text-gray-900">
+                      I am 25 years old or more
+                    </label>
+                  </div>
+                </div>
               </div>
 
-              {/* Pick-up Date */}
+              {/* Pick-up Date & Time */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
                   <CalendarIcon className="w-4 h-4" />
                   Pick-up Date
                 </label>
-                <Popover>
+                <Popover open={pickupDateOpen} onOpenChange={setPickupDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal border border-gray-300",
+                        "w-full justify-start text-left font-normal border border-gray-300 text-gray-900",
                         !pickupDate && "text-muted-foreground"
                       )}
+                      onClick={() => setPickupDateOpen(true)}
                     >
                       {pickupDate ? format(pickupDate, "PPP") : "Select date"}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -157,7 +192,13 @@ const HeroSections = () => {
                     <Calendar
                       mode="single"
                       selected={pickupDate}
-                      onSelect={setPickupDate}
+                      onSelect={(date) => {
+                        setPickupDate(date);
+                        setPickupDateOpen(false);
+                        setTimeout(() => {
+                          pickupTimeRef.current?.focus();
+                        }, 0);
+                      }}
                       disabled={(date) =>
                         date < new Date() || date < new Date("1900-01-01")
                       }
@@ -165,22 +206,37 @@ const HeroSections = () => {
                     />
                   </PopoverContent>
                 </Popover>
+                <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Pick-up Time
+                </label>
+                <Input
+                  type="time"
+                  value={pickupTime}
+                  onChange={(e) => {
+                    setPickupTime(e.target.value);
+                    setReturnDateOpen(true);
+                  }}
+                  ref={pickupTimeRef}
+                  className="border border-gray-300 text-gray-900 placeholder:text-gray-500"
+                />
               </div>
 
-              {/* Return Date */}
+              {/* Return Date & Time */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
                   <CalendarIcon className="w-4 h-4" />
                   Return Date
                 </label>
-                <Popover>
+                <Popover open={returnDateOpen} onOpenChange={setReturnDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal border border-gray-300",
+                        "w-full justify-start text-left font-normal border border-gray-300 text-gray-900",
                         !returnDate && "text-muted-foreground"
                       )}
+                      onClick={() => setReturnDateOpen(true)}
                     >
                       {returnDate ? format(returnDate, "PPP") : "Select date"}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -190,7 +246,13 @@ const HeroSections = () => {
                     <Calendar
                       mode="single"
                       selected={returnDate}
-                      onSelect={setReturnDate}
+                      onSelect={(date) => {
+                        setReturnDate(date);
+                        setReturnDateOpen(false);
+                        setTimeout(() => {
+                          returnTimeRef.current?.focus();
+                        }, 0);
+                      }}
                       disabled={(date) =>
                         date < pickupDate || date < new Date("1900-01-01")
                       }
@@ -198,6 +260,17 @@ const HeroSections = () => {
                     />
                   </PopoverContent>
                 </Popover>
+                <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Return Time
+                </label>
+                <Input
+                  type="time"
+                  value={returnTime}
+                  onChange={(e) => setReturnTime(e.target.value)}
+                  ref={returnTimeRef}
+                  className="border border-gray-300 text-gray-900 placeholder:text-gray-500"
+                />
               </div>
 
               {/* Search Button */}
@@ -207,25 +280,7 @@ const HeroSections = () => {
                 </Button>
               </div>
 
-              {/* Checkbox */}
-              <div className="flex items-center gap-2 ">
-                <Checkbox id="include-children" />
-                <label
-                  htmlFor="include-children"
-                  className="text-sm font-medium text-gray-900"
-                >
-                  Return in the same Store
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="include-children" />
-                <label
-                  htmlFor="include-children"
-                  className="text-sm font-medium text-gray-900"
-                >
-                  I am 25 years old or more
-                </label>
-              </div>
+              
             </div>
           </div>
         </div>
