@@ -47,12 +47,13 @@ export default function BookingSuccess() {
     const days = calculateTotalDays();
     const dailyRate = parseInt(bookingData.selectedCar.price) || 0;
     const planPrices = { basic: 0, standard: 19, premium: 39 };
-    const extrasPrices = { gps: 8, childSeat: 6, additionalDriver: 12, wifi: 7 };
+    const extrasPrices = { gps: 5, childSeat: 10, additionalDriver: 15, wifi: 7, roadside: 8 };
     const protectionPerDay = planPrices[bookingData.step1?.protectionPlan || 'basic'] || 0;
     const extrasPerDay = (bookingData.step1?.extras || []).reduce((sum, id) => sum + (extrasPrices[id] || 0), 0);
-    const taxesAndFeesPerDay = 25;
-    const totalPerDay = dailyRate + protectionPerDay + extrasPerDay + taxesAndFeesPerDay;
-    return totalPerDay * days;
+    const subtotal = (dailyRate + protectionPerDay + extrasPerDay) * days;
+    const taxRate = 0.08;
+    const tax = subtotal * taxRate;
+    return Math.round((subtotal + tax) * 100) / 100;
   };
 
   if (!bookingData) {
@@ -172,9 +173,7 @@ export default function BookingSuccess() {
                   <p><span className="font-medium">Phone:</span> {bookingData?.step2?.phone || 'N/A'}</p>
                 </div>
                 <div className="space-y-2">
-                  <p><span className="font-medium">Age:</span> {bookingData?.step2?.age || 'N/A'}</p>
-                  <p><span className="font-medium">License Number:</span> {bookingData?.step2?.licenseNumber || 'N/A'}</p>
-                  <p><span className="font-medium">License Expires:</span> {bookingData?.step2?.licenseExpiry || 'N/A'}</p>
+                  <p><span className="font-medium">Flight Number:</span> {bookingData?.step2?.flightNumber || 'N/A'}</p>
                 </div>
               </div>
             </CardContent>

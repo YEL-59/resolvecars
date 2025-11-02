@@ -1,5 +1,6 @@
 import CarsCardSection from "@/components/cars/CarsCardSection";
 import CarsHeroSection from "@/components/cars/sections/carsHeroSection";
+import PricingPlans from "@/components/cars/PricingPlans";
 import Layout from "@/components/layout/Layout";
 
 export const metadata = {
@@ -12,6 +13,7 @@ export default function CarsPage() {
     <Layout>
       <main className="min-h-screen bg-gray-50">
         <CarsHeroSection />
+        <PricingPlans />
         <CarsCardSection />
       </main>
     </Layout>

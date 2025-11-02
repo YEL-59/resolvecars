@@ -37,9 +37,7 @@ import { getCarById } from "@/lib/carsData";
 
 export default function CarDetailsPage({ carId }) {
   const router = useRouter();
-  const [selectedProtection, setSelectedProtection] = useState("standard");
-  const [selectedExtras, setSelectedExtras] = useState([]);
-const [openPlanId, setOpenPlanId] = useState(null);
+  // Removed unused state variables
 
   // Find the car by ID
   const car = getCarById(carId) || {
@@ -64,12 +62,37 @@ const [openPlanId, setOpenPlanId] = useState(null);
     available: "Available 24/7",
   };
 
-  const handleBookNow = () => {
-    // Store the selected car in localStoragedo it
+  const handleBookNow = (protectionPlanId) => {
+    // Store the selected car in localStorage
     bookingStorage.setCar(car);
-    // Redirect to booking page
+    // Store the selected protection plan
+    const step1Data = bookingStorage.getStep("step1") || {};
+    bookingStorage.updateStep("step1", {
+      ...step1Data,
+      protectionPlan: protectionPlanId,
+    });
+    // Redirect to booking page step 1 (Coverage & Extras)
     router.push("/booking/step1");
   };
+
+  // Calculate rental period from booking storage
+  const calculateRentalDays = () => {
+    const step1Data = bookingStorage.getStep("step1") || {};
+    if (step1Data.pickupDate && step1Data.dropoffDate) {
+      try {
+        const pickup = new Date(step1Data.pickupDate);
+        const dropoff = new Date(step1Data.dropoffDate);
+        const diffTime = Math.abs(dropoff - pickup);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 1;
+      } catch {
+        return 1;
+      }
+    }
+    return 1; // default to 1 day if dates not set
+  };
+
+  const rentalDays = calculateRentalDays();
 
   const handleExtraChange = (extra) => {
     setSelectedExtras((prev) =>
@@ -82,14 +105,13 @@ const [openPlanId, setOpenPlanId] = useState(null);
   const protectionPlans = [
     {
       id: "basic",
-      name: "Basic Rate",
-      price: 89,
+      name: "Basic Protection",
+      dailyPrice: 0, // Basic is included (free)
       description:
         "Perfect for budget-conscious travelers who need reliable transportation.",
-      selected: selectedProtection === "basic",
       details: {
         pricing: {
-          dailyRate: 89,
+          dailyRate: 0,
           securityDeposit: "None",
           cancellation: "Free",
         },
@@ -104,13 +126,12 @@ const [openPlanId, setOpenPlanId] = useState(null);
     {
       id: "standard",
       name: "Standard Protection",
-      price: 119,
+      dailyPrice: 19,
       description:
         "Enhanced protection with reduced liability and comprehensive coverage.",
-      selected: selectedProtection === "standard",
       details: {
         pricing: {
-          dailyRate: 119,
+          dailyRate: 19,
           securityDeposit: "$200",
           cancellation: "Free",
         },
@@ -127,13 +148,12 @@ const [openPlanId, setOpenPlanId] = useState(null);
     {
       id: "premium",
       name: "Premium Protection",
-      price: 149,
+      dailyPrice: 39,
       description:
         "Maximum protection with zero excess and comprehensive coverage.",
-      selected: selectedProtection === "premium",
       details: {
         pricing: {
-          dailyRate: 149,
+          dailyRate: 39,
           securityDeposit: "None",
           cancellation: "Free",
         },
@@ -150,36 +170,23 @@ const [openPlanId, setOpenPlanId] = useState(null);
     },
   ];
 
-  const optionalExtras = [
-    {
-      id: "gps",
-      name: "GPS Navigation",
-      price: 5,
-      description: "Never get lost with premium GPS",
-    },
-    {
-      id: "child-seat",
-      name: "Child Seat",
-      price: 12,
-      description: "Safety first for your little ones",
-    },
-    {
-      id: "additional-driver",
-      name: "Additional Driver",
-      price: 10,
-      description: "Add a second authorized driver",
-    },
-  ];
+  // Calculate total for each protection plan
+  const calculateTotalForPlan = (plan) => {
+    const carDailyRate = parseInt(car.price || 0);
+    const protectionTotal = plan.dailyPrice * rentalDays;
+    const baseTotal = carDailyRate * rentalDays;
+    const subtotal = baseTotal + protectionTotal;
+    const tax = subtotal * 0.08; // 8% tax
+    return {
+      base: baseTotal,
+      protection: protectionTotal,
+      subtotal: subtotal,
+      tax: tax,
+      total: subtotal + tax,
+    };
+  };
 
-  const totalExtras = selectedExtras.reduce((sum, extraId) => {
-    const extra = optionalExtras.find((e) => e.id === extraId);
-    return sum + (extra ? extra.price : 0);
-  }, 0);
-
-  const selectedPlan = protectionPlans.find((p) => p.id === selectedProtection) || protectionPlans[0];
-  const baseDays = 3;
-  const baseRate = selectedPlan.price * baseDays;
-  const total = baseRate + totalExtras;
+  // Extras are now handled in Step1 (Coverage & Extras)
 
   return (
     <Layout>
@@ -329,68 +336,69 @@ const [openPlanId, setOpenPlanId] = useState(null);
                 </Card>
               </div>
 
-              {/* Protection Plans */}
+              {/* Protection Plans - Show 3 prices with totals */}
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">Protection Plans</h2>
+                <h2 className="text-xl font-bold text-gray-900">Choose Your Protection Plan</h2>
+                <p className="text-sm text-gray-600">
+                  Rental Period: {rentalDays} {rentalDays === 1 ? "day" : "days"}
+                </p>
 
-                 <div className="space-y-3">
-                   {protectionPlans.map((plan) => (
-                     <div key={plan.id} className="rounded-lg border border-gray-200">
-                       <div
-                         className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${
-                           plan.selected ? "bg-red-50 border-red-200" : "bg-white"
-                         }`}
-                         onClick={() => {
-                           setSelectedProtection(plan.id);
-                           setOpenPlanId((prev) => (prev === plan.id ? null : plan.id));
-                         }}
-                       >
-                         <div className="flex-1">
-                           <div className="flex items-center gap-3">
-                             <h3 className="font-medium">{plan.name}</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   {protectionPlans.map((plan) => {
+                     const totals = calculateTotalForPlan(plan);
+                     return (
+                       <div key={plan.id} className={`rounded-lg border-2 p-5 transition-all hover:shadow-lg ${
+                         plan.id === "basic" ? "border-gray-200 bg-gray-50" :
+                         plan.id === "standard" ? "border-blue-200 bg-blue-50" :
+                         "border-purple-200 bg-purple-50"
+                       }`}>
+                         <div className="mb-4">
+                           <div className="flex items-center justify-between mb-2">
+                             <h3 className="text-lg font-bold">{plan.name}</h3>
                              {plan.id === "basic" && (
-                               <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">Recommended</span>
+                               <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">Included</span>
                              )}
                            </div>
-                           <p className="text-xs text-gray-600 mt-1">
-+                             {plan.id === "basic" && "Basic insurance • Standard vehicle maintenance"}
-+                             {plan.id === "standard" && "$200 deposit • Theft protection • Roadside assistance"}
-+                             {plan.id === "premium" && "No deposit • Full comprehensive coverage • Premium assistance"}
-+                           </p>
-                            <p className="text-xs text-gray-500 mt-1">Free cancellation up to 24 hours before pickup</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold">${plan.price} / day</span>
-                            <ChevronRight className={`w-5 h-5 transition-transform ${openPlanId === plan.id ? "rotate-90 text-red-400" : "text-gray-400"}`} />
-                          </div>
-                        </div>
-                        {openPlanId === plan.id && (
-                          <div className="px-4 pb-4">
-                            <div className="mt-3 grid md:grid-cols-2 gap-3 text-sm">
-                              <div className="space-y-1">
-                                <p className="font-medium">What’s included</p>
-                                <ul className="text-gray-600 list-disc pl-5">
-                                  {plan.details.features.map((f, i) => (
-                                    <li key={i}>{f}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="font-medium">Pricing & policy</p>
-                                <div className="text-gray-600">
-                                  <p>Daily rate: ${plan.details.pricing.dailyRate}</p>
-                                  <p>Security deposit: {plan.details.pricing.securityDeposit}</p>
-                                  <p>
-                                    Cancellation: {plan.details.cancellationPolicy || plan.details.pricing.cancellation}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-</div>
-                         )}
-                      </div>
-                    ))}
-                  </div>
+                           <p className="text-sm text-gray-600 mb-3">{plan.description}</p>
+                           
+                           {/* Price breakdown */}
+                           <div className="space-y-2 mb-4">
+                             <div className="flex justify-between text-sm">
+                               <span className="text-gray-600">Base rental ({rentalDays} {rentalDays === 1 ? "day" : "days"})</span>
+                               <span className="font-medium">${totals.base.toFixed(2)}</span>
+                             </div>
+                             <div className="flex justify-between text-sm">
+                               <span className="text-gray-600">Protection ({plan.id === "basic" ? "Included" : `$${plan.dailyPrice}/day`})</span>
+                               <span className="font-medium">{plan.id === "basic" ? "Free" : `$${totals.protection.toFixed(2)}`}</span>
+                             </div>
+                             <div className="flex justify-between text-sm">
+                               <span className="text-gray-600">Tax (8%)</span>
+                               <span className="font-medium">${totals.tax.toFixed(2)}</span>
+                             </div>
+                             <div className="border-t pt-2 mt-2">
+                               <div className="flex justify-between items-center">
+                                 <span className="font-bold text-lg">Total</span>
+                                 <span className="font-bold text-xl text-red-600">${totals.total.toFixed(2)}</span>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+
+                         {/* Continue/Book Button */}
+                         <Button
+                           onClick={() => handleBookNow(plan.id)}
+                           className={`w-full ${
+                             plan.id === "basic" ? "bg-gray-800 hover:bg-gray-900" :
+                             plan.id === "standard" ? "bg-blue-600 hover:bg-blue-700" :
+                             "bg-purple-600 hover:bg-purple-700"
+                           } text-white`}
+                         >
+                           Continue with {plan.name}
+                         </Button>
+                       </div>
+                     );
+                   })}
+                 </div>
 
               </div>
 
@@ -483,136 +491,56 @@ const [openPlanId, setOpenPlanId] = useState(null);
                 <CardContent className="p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <Calendar className="w-5 h-5 text-gray-600" />
-                    <h3 className="text-lg font-bold">Booking Summary</h3>
+                    <h3 className="text-lg font-bold">Booking Details</h3>
                   </div>
 
                   {/* Pickup/Return Details */}
                   <div className="space-y-3 mb-6">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Pickup
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Dec 15, 2024 • 10:00 AM
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Return
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Dec 18, 2024 • 10:00 AM
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-600">
-                        {car.location}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Base Rate */}
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-sm text-gray-600">
-                      Base rate ({baseDays} days)
-                    </span>
-                    <span className="text-sm font-medium">${baseRate}</span>
-                  </div>
-
-                  {/* Protection Plans Selection */}
-                  <div className="space-y-3 mb-6">
-                    <h4 className="font-medium text-gray-900">
-                      Protection Plans
-                    </h4>
-                    <div className="space-y-2">
-                      {protectionPlans.map((plan) => (
-                        <div
-                          key={plan.id}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              id={plan.id}
-                              name="protection"
-                              checked={plan.selected}
-                              onChange={() => setSelectedProtection(plan.id)}
-                              className="w-4 h-4 text-red-600"
-                            />
-                            <label htmlFor={plan.id} className="text-sm">
-                              {plan.name}
-                              {plan.id === "standard" && (
-                                <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                                  Included
-                                </span>
-                              )}
-                            </label>
+                    {(() => {
+                      const step1Data = bookingStorage.getStep("step1") || {};
+                      const formatDate = (dateStr) => {
+                        if (!dateStr) return "Not set";
+                        try {
+                          const date = new Date(dateStr);
+                          return date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          });
+                        } catch {
+                          return "Not set";
+                        }
+                      };
+                      return (
+                        <>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Pickup
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {formatDate(step1Data.pickupDate)}
+                            </p>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Optional Extras */}
-                  <div className="space-y-3 mb-6">
-                    <h4 className="font-medium text-gray-900">
-                      Optional Extras
-                    </h4>
-                    <div className="space-y-3">
-                      {optionalExtras.map((extra) => (
-                        <div
-                          key={extra.id}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id={extra.id}
-                              checked={selectedExtras.includes(extra.id)}
-                              onCheckedChange={() =>
-                                handleExtraChange(extra.id)
-                              }
-                            />
-                            <div>
-                              <label
-                                htmlFor={extra.id}
-                                className="text-sm font-medium"
-                              >
-                                {extra.name}
-                              </label>
-                              <p className="text-xs text-gray-500">
-                                {extra.description}
-                              </p>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Return
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {formatDate(step1Data.dropoffDate)}
+                            </p>
+                          </div>
+                          {step1Data.pickupLocation && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4 text-gray-600" />
+                              <span className="text-sm text-gray-600">
+                                {step1Data.pickupLocation}
+                              </span>
                             </div>
-                          </div>
-                          <span className="text-sm font-medium">
-                            ${extra.price}/day
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
-
-                  {/* Total */}
-                  <div className="pt-4 mb-6">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold">Total</span>
-                      <span className="text-lg font-bold text-red-500">
-                        ${total}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Includes all taxes and fees
-                    </p>
-                  </div>
-
-                  {/* Book Now Button */}
-                  <Button
-                    onClick={handleBookNow}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white py-3 text-lg font-medium mb-3"
-                  >
-                    Book Now
-                  </Button>
 
                   <p className="text-xs text-gray-500 text-center">
                     Free cancellation up to 24 hours before pickup

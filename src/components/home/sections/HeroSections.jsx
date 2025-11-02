@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +30,10 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { bookingStorage } from "@/lib/bookingStorage";
 
 const HeroSections = () => {
+  const router = useRouter();
   const [pickupDate, setPickupDate] = useState();
   const [returnDate, setReturnDate] = useState();
   const [pickupTime, setPickupTime] = useState("");
@@ -50,6 +53,36 @@ const HeroSections = () => {
     { value: "miami", label: "Miami" },
     { value: "las-vegas", label: "Las Vegas" },
   ];
+
+  const handleSearch = () => {
+    if (!pickupDate || !returnDate || !location) {
+      return;
+    }
+    const toISO = (dateObj, timeStr) => {
+      try {
+        const d = new Date(dateObj);
+        if (timeStr) {
+          const [h, m] = timeStr.split(":");
+          d.setHours(parseInt(h || "0"), parseInt(m || "0"), 0, 0);
+        }
+        return d.toISOString();
+      } catch {
+        return dateObj?.toString?.() || "";
+      }
+    };
+
+    bookingStorage.updateStep("step1", {
+      pickupDate: toISO(pickupDate, pickupTime),
+      dropoffDate: toISO(returnDate, returnTime),
+      pickupLocation: location,
+      dropoffLocation: sameStore ? location : destination,
+      requirements: "",
+      protectionPlan: "basic",
+      extras: [],
+    });
+
+    router.push("/cars");
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -152,7 +185,7 @@ const HeroSections = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-6 flex-wrap">
+                <div className="flex items-center gap-6 flex-wrap mt-2 pt-3 border-t border-gray-200">
                   <div className="flex items-center gap-2">
                     <Checkbox id="same-store" checked={sameStore} onCheckedChange={(v) => setSameStore(!!v)} />
                     <label htmlFor="same-store" className="text-sm font-medium text-gray-900">
@@ -275,7 +308,7 @@ const HeroSections = () => {
 
               {/* Search Button */}
               <div className="flex items-end">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-white text-lg ">
+                <Button onClick={handleSearch} className="w-full bg-primary hover:bg-primary/90 text-white text-lg ">
                   Search Cars
                 </Button>
               </div>

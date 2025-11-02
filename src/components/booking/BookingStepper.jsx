@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { CarIcon, UserIcon, CreditCardIcon, CheckIcon } from "lucide-react";
 
 const steps = [
-  { key: 1, label: "Rental Details", Icon: CarIcon },
-  { key: 2, label: "Customer Info", Icon: UserIcon },
+  { key: 1, label: "Coverage & Extras", Icon: CarIcon },
+  { key: 2, label: "Customer Details", Icon: UserIcon },
   { key: 3, label: "Payment", Icon: CreditCardIcon },
   { key: 4, label: "Review & Book", Icon: CheckIcon },
 ];
@@ -47,9 +47,8 @@ export default function BookingStepper({ current = 1, allowForward = false, onGo
               <button
                 type="button"
                 onClick={() => canClick && goToStep(s.key)}
-                className={`flex flex-col items-center bg-transparent p-0 border-none ${
-                  canClick ? "cursor-pointer" : "cursor-not-allowed opacity-60"
-                }`}
+                className={`flex flex-col items-center bg-transparent p-0 border-none ${canClick ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+                  }`}
                 aria-disabled={!canClick}
               >
                 <div className={circleClasses(status)}>

@@ -122,140 +122,16 @@ export default function Step2Customer({ onPrev, onNext }) {
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="age"
-              render={({ field }) => (
-                <FormItem className="md:w-1/2">
-                  <FormLabel>Age</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="21"
-                      max="80"
-                      placeholder="Enter your age"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4 rounded-xl border p-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
-            <IdCard className="w-5 h-5 text-rose-600" />
-            Driver Information
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="licenseNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>License Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your license number" {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="licenseExpiry"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>License Expiry Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" min={getMinLicenseExpiry()} {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4 rounded-xl border p-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
-            <MapPin className="w-5 h-5 text-rose-600" />
-            Address Information
-          </h3>
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="billingAddress"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Street address" {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="city"
+                name="flightNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>Flight Number (optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="City" {...field} value={field.value || ""} />
+                      <Input placeholder="e.g., BA142" {...field} value={field.value || ""} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="zipCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ZIP Code</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ZIP / Postal code" {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Country</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Country" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {[
-                          "United States",
-                          "Canada",
-                          "United Kingdom",
-                          "Australia",
-                          "Germany",
-                          "France",
-                        ].map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -263,6 +139,7 @@ export default function Step2Customer({ onPrev, onNext }) {
             </div>
           </div>
         </div>
+        {/* Driver and address information removed per minimal requirements */}
 
         <div className="flex justify-between pt-6">
           <Button
@@ -272,7 +149,7 @@ export default function Step2Customer({ onPrev, onNext }) {
             className="flex items-center gap-2 border-rose-300 text-rose-700 hover:bg-rose-50"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Rental Details
+            Back to Coverage & Extras
           </Button>
           <Button
             type="submit"
@@ -286,3 +163,4 @@ export default function Step2Customer({ onPrev, onNext }) {
     </Form>
   );
 }
+

@@ -12,11 +12,11 @@ import Step1Rental from "./steps/Step1Rental";
 import Step2Customer from "./steps/Step2Customer";
 import Step3Payment from "./steps/Step3Payment";
 import Step4Review from "./steps/Step4Review";
-import { CarIcon, CheckIcon, CreditCardIcon, UserIcon } from "lucide-react";
+import { CarIcon, CheckIcon, CreditCardIcon, UserIcon, ShieldCheck } from "lucide-react";
 // removed: import BookingStepper from "./BookingStepper";
 
 // Combined schema for all steps; each page will validate only its relevant slice
-const schema = z.object({
+  const schema = z.object({
   // step 1
   pickupDate: z.string().optional(),
   dropoffDate: z.string().optional(),
@@ -30,9 +30,7 @@ const schema = z.object({
   lastName: z.string().optional(),
   email: z.string().optional(),
   phone: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  licenseExpiry: z.string().optional(),
-  age: z.string().optional(),
+  flightNumber: z.string().optional(),
   // step 3
   paymentMethod: z.string().optional(),
   cardNumber: z.string().optional(),
@@ -100,6 +98,7 @@ export default function BookingRoot() {
         lastName,
         email,
         phone,
+        flightNumber,
         licenseNumber,
         licenseExpiry,
         age,
@@ -130,9 +129,7 @@ export default function BookingRoot() {
         lastName,
         email,
         phone,
-        licenseNumber,
-        licenseExpiry,
-        age,
+        flightNumber,
       });
       bookingStorage.updateStep("step3", {
         paymentMethod,
@@ -167,29 +164,24 @@ export default function BookingRoot() {
         <div className=" p-0 shadow-lg ">
           <div className="bg-white  ">
             <div className="text-2xl font-normal text-primary bg-[#F7F8FA] py-5 px-5 rounded-t-lg shadow-sm">
-              {/* here i add car icon before text {step === 1 && "   Rental Details"} */}
               {step === 1 && (
                 <>
-                  <CarIcon className="inline-block w-6 h-6 mr-2" /> Rental
-                  Details
+                  <ShieldCheck className="inline-block w-6 h-6 mr-2" /> Coverage & Extras
                 </>
               )}
               {step === 2 && (
                 <>
-                  <UserIcon className="inline-block w-6 h-6 mr-2" /> "Customer
-                  Information"
+                  <UserIcon className="inline-block w-6 h-6 mr-2" /> Customer Details
                 </>
               )}
               {step === 3 && (
                 <>
-                  <CreditCardIcon className="inline-block w-6 h-6 mr-2" />{" "}
-                  "Payment Information"
+                  <CreditCardIcon className="inline-block w-6 h-6 mr-2" /> Payment
                 </>
               )}
               {step === 4 && (
                 <>
-                  <CheckIcon className="inline-block w-6 h-6 mr-2" /> "Review
-                  Your Booking"
+                  <CheckIcon className="inline-block w-6 h-6 mr-2" /> Review Your Booking
                 </>
               )}
             </div>

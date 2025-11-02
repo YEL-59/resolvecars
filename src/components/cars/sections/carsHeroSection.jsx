@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,24 @@ import { CalendarIcon, MapPin, Clock, Car, Users } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { bookingStorage } from "@/lib/bookingStorage";
+import { useRouter } from "next/navigation";
 
 const CarsHeroSection = () => {
+  const router = useRouter();
   const [pickupDate, setPickupDate] = useState();
   const [returnDate, setReturnDate] = useState();
   const [location, setLocation] = useState("");
   const [destination, setDestination] = useState("");
+  useEffect(() => {
+    const step1 = bookingStorage.getStep("step1") || {};
+    try {
+      if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
+      if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
+      if (step1.pickupLocation) setLocation(step1.pickupLocation);
+      if (step1.dropoffLocation) setDestination(step1.dropoffLocation);
+    } catch {}
+  }, []);
   const locations = [
     { value: "new-york", label: "New York City" },
     { value: "los-angeles", label: "Los Angeles" },
@@ -155,7 +167,37 @@ const CarsHeroSection = () => {
 
           {/* Search Button */}
           <div className="flex items-end">
-            <Button className="w-full bg-primary hover:bg-primary/90 text-white h-10">
+            <Button 
+              className="w-full bg-primary hover:bg-primary/90 text-white h-10"
+              onClick={() => {
+                if (!pickupDate || !returnDate || !location) {
+                  alert("Please fill in all required fields");
+                  return;
+                }
+                const toISO = (dateObj) => {
+                  try {
+                    if (!dateObj) return "";
+                    const d = new Date(dateObj);
+                    return d.toISOString();
+                  } catch {
+                    return "";
+                  }
+                };
+
+                bookingStorage.updateStep("step1", {
+                  pickupDate: toISO(pickupDate),
+                  dropoffDate: toISO(returnDate),
+                  pickupLocation: location,
+                  dropoffLocation: destination || location,
+                  requirements: "",
+                  protectionPlan: "basic",
+                  extras: [],
+                });
+                
+                // The page will stay on /cars but the data is saved
+                // User can now click on a car to see insurance prices
+              }}
+            >
               Search Cars
             </Button>
           </div>

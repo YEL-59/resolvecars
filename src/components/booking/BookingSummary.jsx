@@ -27,26 +27,42 @@ export default function BookingSummary({ selectedCar, form }) {
     const days = computeDays();
     const dailyRate = parseInt(selectedCar?.price || 0) || 0;
     const planPrices = { basic: 0, standard: 19, premium: 39 };
-    const extrasPrices = {
-      gps: 8,
-      childSeat: 6,
-      additionalDriver: 12,
+    
+    // Extras pricing - some per day, some per booking
+    const extrasPerDayPrices = {
+      gps: 5,
+      childSeat: 10,
+      additionalDriver: 15,
       wifi: 7,
+      roadside: 8,
     };
+    
+    const extrasPerBookingPrices = {
+      youngDriver: 25,
+    };
+    
     const protection = planPrices[step1.protectionPlan || "basic"] || 0;
-    const extras = (step1.extras || []).reduce(
-      (s, id) => s + (extrasPrices[id] || 0),
+    
+    // Calculate extras: per-day extras multiplied by days, per-booking extras added once
+    const extrasPerDay = (step1.extras || []).reduce(
+      (s, id) => s + (extrasPerDayPrices[id] || 0),
       0
     );
+    const extrasPerBooking = (step1.extras || []).reduce(
+      (s, id) => s + (extrasPerBookingPrices[id] || 0),
+      0
+    );
+    
+    const totalExtras = (extrasPerDay * days) + extrasPerBooking;
     const taxRate = 0.08;
-    const subtotal = (dailyRate + protection + extras) * days;
+    const subtotal = (dailyRate + protection) * days + totalExtras;
     const tax = subtotal * taxRate;
     const total = subtotal + tax;
 
-    return { days, subtotal, tax, total, dailyRate };
+    return { days, subtotal, tax, total, dailyRate, totalExtras, extrasPerDay, extrasPerBooking };
   };
 
-  const { days, subtotal, tax, total, dailyRate } = computeTotals();
+  const { days, subtotal, tax, total, dailyRate, totalExtras } = computeTotals();
 
   return (
     <div className="space-y-4">
@@ -108,8 +124,61 @@ export default function BookingSummary({ selectedCar, form }) {
               <Car className="w-4 h-4 text-primary" />
               Base rental ({days} {days > 1 ? "days" : "day"})
             </span>
-            <span>${dailyRate.toFixed(2)}</span>
+            <span>${(dailyRate * days).toFixed(2)}</span>
           </div>
+
+          {/* Protection Plan */}
+          {(() => {
+            const planPrices = { basic: 0, standard: 19, premium: 39 };
+            const protectionPlan = planPrices[step1.protectionPlan || "basic"] || 0;
+            const planNames = { basic: "Basic Protection", standard: "Standard Protection", premium: "Premium Protection" };
+            if (protectionPlan > 0) {
+              return (
+                <div className="flex justify-between text-sm">
+                  <span>Protection Plan ({planNames[step1.protectionPlan || "basic"]})</span>
+                  <span>${(protectionPlan * days).toFixed(2)}</span>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          {/* Extras */}
+          {(() => {
+            const extrasPerDayPrices = { gps: 5, childSeat: 10, additionalDriver: 15, wifi: 7, roadside: 8 };
+            const extrasPerBookingPrices = { youngDriver: 25 };
+            const extrasNames = {
+              gps: "GPS Navigation",
+              childSeat: "Child Safety Seats",
+              additionalDriver: "Additional Drivers",
+              wifi: "Wi-Fi Hotspot",
+              roadside: "Roadside Assistance",
+              youngDriver: "Young Driver Fee"
+            };
+            const selectedExtras = step1.extras || [];
+            
+            if (selectedExtras.length > 0 && totalExtras > 0) {
+              return (
+                <>
+                  {selectedExtras.map((extraId) => {
+                    const isPerDay = extrasPerDayPrices[extraId];
+                    const isPerBooking = extrasPerBookingPrices[extraId];
+                    const price = isPerDay ? extrasPerDayPrices[extraId] * days : (isPerBooking ? extrasPerBookingPrices[extraId] : 0);
+                    if (price > 0) {
+                      return (
+                        <div key={extraId} className="flex justify-between text-sm">
+                          <span>{extrasNames[extraId] || extraId}</span>
+                          <span>${price.toFixed(2)}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </>
+              );
+            }
+            return null;
+          })()}
 
           <hr className="my-2 border-rose-100" />
 
@@ -132,7 +201,7 @@ export default function BookingSummary({ selectedCar, form }) {
           </div>
 
           <p className="text-xs text-gray-500 mt-1">
-            ${total.toFixed(2)} per day avg
+            ${(total / days).toFixed(2)} per day avg
           </p>
 
           {/* Secure Payment Section */}
@@ -154,3 +223,4 @@ export default function BookingSummary({ selectedCar, form }) {
     </div>
   );
 }
+
