@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,18 @@ import { Phone, User, LogOut, Settings, Car, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export default function Navbar() {
+  const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true); // toggle manually true/false
   const [user] = useState({
     name: "John Smith",
     email: "john@example.com",
     avatar: "/assets/user.jpg",
   });
+
+  // Prevent hydration errors by only rendering Radix UI components after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -79,7 +85,7 @@ export default function Navbar() {
           </div>
 
           {/* Auth Section */}
-          {isLoggedIn ? (
+          {mounted && isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2">
@@ -126,6 +132,22 @@ export default function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          ) : !mounted ? (
+            // Fallback during SSR to prevent hydration mismatch
+            <div className="flex items-center gap-2">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback>
+                  {user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden md:inline text-sm font-medium text-gray-800">
+                {user.name}
+              </span>
+            </div>
           ) : (
             <div className="hidden md:flex items-center space-x-3">
               <Button variant="ghost" asChild>
@@ -138,13 +160,14 @@ export default function Navbar() {
           )}
           {/* Mobile Menu */}
           <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open menu">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-4">
+            {mounted ? (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Open menu">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="relative w-20 h-10">
                     <Image
@@ -192,6 +215,12 @@ export default function Navbar() {
                 </div>
               </SheetContent>
             </Sheet>
+            ) : (
+              // Fallback during SSR to prevent hydration mismatch
+              <Button variant="ghost" size="icon" aria-label="Open menu" disabled>
+                <Menu className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -85,8 +85,12 @@ export default function Step1Rental({ onNext }) {
     if (existing) {
       form.reset({ ...form.getValues(), ...existing });
       // Set coverage based on protection plan from car card selection
-      if (existing.protectionPlan === "premium" || existing.protectionPlan === "smart") {
+      const packageId = existing.protectionPlan || "premium";
+
+      if (packageId === "premium") {
+        // PREMIUM: Already has maximum coverage, no cards to show
         setSelectedCoverage("premium");
+        form.setValue("coveragePlan", "premium");
         // Auto-include Fast Track if not already included
         const currentExtras = existing.extras || [];
         if (!currentExtras.includes("fastTrack")) {
@@ -97,8 +101,27 @@ export default function Step1Rental({ onNext }) {
             extras: updatedExtras,
           });
         }
-      } else if (existing.protectionPlan === "superPremium") {
+      } else if (packageId === "smart") {
+        // SMART: Default to premium cover
+        setSelectedCoverage("premium");
+        form.setValue("coveragePlan", "premium");
+        // Auto-include Fast Track if not already included
+        const currentExtras = existing.extras || [];
+        if (!currentExtras.includes("fastTrack")) {
+          const updatedExtras = [...currentExtras, "fastTrack"];
+          form.setValue("extras", updatedExtras);
+          bookingStorage.updateStep("step1", {
+            ...existing,
+            extras: updatedExtras,
+          });
+        }
+      } else if (packageId === "standard") {
+        // STANDARD: Default to premium cover
+        setSelectedCoverage("premium");
+        form.setValue("coveragePlan", "premium");
+      } else if (packageId === "superPremium") {
         setSelectedCoverage("superPremium");
+        form.setValue("coveragePlan", "superPremium");
         // Auto-include Fast Track if not already included
         const currentExtras = existing.extras || [];
         if (!currentExtras.includes("fastTrack")) {
@@ -135,7 +158,7 @@ export default function Step1Rental({ onNext }) {
   const handleExtraToggle = (extraId) => {
     const current = form.getValues("extras") || [];
     const isCurrentlyIncluded = current.includes(extraId);
-    
+
     if (isCurrentlyIncluded) {
       // Remove from extras
       const updated = current.filter((e) => e !== extraId);
@@ -157,7 +180,7 @@ export default function Step1Rental({ onNext }) {
 
   // Watch extras to make component reactive
   const watchedExtras = form.watch("extras") || [];
-  
+
   const isExtraIncluded = (extraId) => {
     return watchedExtras.includes(extraId);
   };
@@ -168,10 +191,13 @@ export default function Step1Rental({ onNext }) {
     return step1Data.protectionPlan || "premium";
   }, []);
 
-  // Determine which coverage cards to show
-  const showBasicCover = selectedPackage === "lite" || selectedPackage === "standard";
-  const showPremiumCover = true; // Always show Premium
-  const showSuperPremiumCover = true; // Always show Super Premium
+  // Determine which coverage cards to show based on package
+  // PREMIUM: No cards (already has maximum coverage)
+  // SMART: Show 1 card (Premium Cover)
+  // STANDARD: Show 2 cards (Premium Cover and Super Premium Cover)
+  const showBasicCover = false; // Never show Basic Cover for these packages
+  const showPremiumCover = selectedPackage === "smart" || selectedPackage === "standard";
+  const showSuperPremiumCover = selectedPackage === "standard";
 
   const basicCover = coveragePlans.basic;
   const premiumCover = coveragePlans.premium;
@@ -183,15 +209,15 @@ export default function Step1Rental({ onNext }) {
     const packagePrices = {
       premium: 25.83, // From PREMIUM card
       smart: 24.57, // From SMART card
-      lite: 11.00, // From LITE card
       standard: 13.18, // From STANDARD card (15.50 * 0.85)
     };
     return packagePrices[selectedPackage] || 25.83;
   };
 
   const baseRatePrice = getBaseRatePrice();
-  const premiumDailyPrice = showBasicCover ? 13.57 : premiumCover.basePrice;
-  const superPremiumDailyPrice = showBasicCover ? 19.78 : (premiumCover.basePrice + superPremiumCover.dailyPrice);
+  // For SMART and STANDARD, show additional coverage prices
+  const premiumDailyPrice = selectedPackage === "smart" || selectedPackage === "standard" ? 13.57 : 0;
+  const superPremiumDailyPrice = selectedPackage === "standard" ? 19.78 : 0;
 
   // Calculate totals
   const baseRateTotal = baseRatePrice * rentalDays;
@@ -217,7 +243,7 @@ export default function Step1Rental({ onNext }) {
                 {selectedCar?.name || "Car"} or similar
               </h3>
               <p className="text-xs text-red-600 mb-3">Best price for these dates</p>
-              
+
               {selectedCar?.image && (
                 <div className="relative w-full h-32 mb-4 bg-gray-50 rounded-lg overflow-hidden">
                   <Image
@@ -235,12 +261,15 @@ export default function Step1Rental({ onNext }) {
                 </p>
                 <p className="text-xl font-bold text-gray-900">
                   {(() => {
-                    if (selectedCoverage === "basic") {
+                    if (selectedPackage === "premium") {
+                      // PREMIUM: Base rate only (already includes coverage)
                       return baseRateTotal.toFixed(2);
                     } else if (selectedCoverage === "premium") {
                       return (baseRateTotal + premiumTotal).toFixed(2);
-                    } else {
+                    } else if (selectedCoverage === "superPremium") {
                       return (baseRateTotal + superPremiumTotal).toFixed(2);
+                    } else {
+                      return baseRateTotal.toFixed(2);
                     }
                   })()}{" "}
                   €
@@ -254,11 +283,13 @@ export default function Step1Rental({ onNext }) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-700">
-                      {selectedCoverage === "basic"
-                        ? "Basic Cover"
-                        : selectedCoverage === "premium"
+                      {selectedPackage === "premium"
                         ? "Premium Cover"
-                        : "Super Premium Cover"}
+                        : selectedCoverage === "premium"
+                          ? "Premium Cover"
+                          : selectedCoverage === "superPremium"
+                            ? "Super Premium Cover"
+                            : "Premium Cover"}
                     </span>
                     <span className="text-green-600 font-medium">Included</span>
                   </div>
@@ -292,24 +323,28 @@ export default function Step1Rental({ onNext }) {
               <div className="mt-4 pt-4 border-t border-gray-200 text-sm">
                 <p className="text-gray-600">
                   {(() => {
-                    if (selectedCoverage === "basic") {
+                    if (selectedPackage === "premium") {
                       return baseRatePrice.toFixed(2);
                     } else if (selectedCoverage === "premium") {
                       return (baseRatePrice + premiumDailyPrice).toFixed(2);
-                    } else {
+                    } else if (selectedCoverage === "superPremium") {
                       return (baseRatePrice + superPremiumDailyPrice).toFixed(2);
+                    } else {
+                      return baseRatePrice.toFixed(2);
                     }
                   })()}{" "}
                   €/day
                 </p>
                 <p className="text-gray-600">
                   {(() => {
-                    if (selectedCoverage === "basic") {
+                    if (selectedPackage === "premium") {
                       return baseRateTotal.toFixed(0);
                     } else if (selectedCoverage === "premium") {
                       return (baseRateTotal + premiumTotal).toFixed(0);
-                    } else {
+                    } else if (selectedCoverage === "superPremium") {
                       return (baseRateTotal + superPremiumTotal).toFixed(0);
+                    } else {
+                      return baseRateTotal.toFixed(0);
                     }
                   })()}{" "}
                   € ({rentalDays} days)
@@ -322,12 +357,14 @@ export default function Step1Rental({ onNext }) {
                   Your booking gives you{" "}
                   {Math.floor(
                     (() => {
-                      if (selectedCoverage === "basic") {
+                      if (selectedPackage === "premium") {
                         return baseRateTotal;
                       } else if (selectedCoverage === "premium") {
                         return baseRateTotal + premiumTotal;
-                      } else {
+                      } else if (selectedCoverage === "superPremium") {
                         return baseRateTotal + superPremiumTotal;
+                      } else {
+                        return baseRateTotal;
                       }
                     })()
                   )}{" "}
@@ -344,239 +381,252 @@ export default function Step1Rental({ onNext }) {
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 Protect your vacations! Select your cover of choice
               </h2>
-              
-              <div className={`grid gap-4 ${showBasicCover ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2"}`}>
-                {/* Basic Cover - Only show for LITE/STANDARD */}
-                {showBasicCover && (
-                  <div
-                    className={`border-2 rounded-lg overflow-hidden ${
-                      selectedCoverage === "basic"
+
+              {/* Only show coverage selection section if there are cards to display */}
+              {(showPremiumCover || showSuperPremiumCover) && (
+                <div className={`grid gap-4 ${showPremiumCover && showSuperPremiumCover
+                  ? "grid-cols-1 md:grid-cols-2"
+                  : "grid-cols-1"
+                  }`}>
+                  {/* Basic Cover - Not shown for PREMIUM/SMART/STANDARD */}
+                  {showBasicCover && (
+                    <div
+                      className={`border-2 rounded-lg overflow-hidden ${selectedCoverage === "basic"
                         ? "border-blue-600 bg-blue-50"
                         : "border-gray-200 bg-white"
-                    }`}
-                  >
-                    <div className="bg-blue-600 text-white px-4 py-2 text-xs font-semibold">
-                      {basicCover.status}
-                    </div>
-                    <div className="p-4">
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-600 mb-2">
-                          Included in the price
-                        </p>
+                        }`}
+                    >
+                      <div className="bg-blue-600 text-white px-4 py-2 text-xs font-semibold">
+                        {basicCover.status}
                       </div>
-                      
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-start gap-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            FRANCHISE: {basicCover.franchise} €
-                          </span>
-                          <Info className="w-3 h-3 text-gray-400" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-700 mt-2">
-                          Included in the price:
-                        </p>
-                        {basicCover.included.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-2">
-                            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-gray-700">{item.name}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {basicCover.excluded.length > 0 && (
-                        <div className="space-y-2 mb-4">
-                          <p className="text-sm font-medium text-gray-700">
-                            Excluded:
+                      <div className="p-4">
+                        <div className="mb-4">
+                          <p className="text-sm text-gray-600 mb-2">
+                            Included in the price
                           </p>
-                          {basicCover.excluded.map((item, idx) => (
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-start gap-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              FRANCHISE: {basicCover.franchise} €
+                            </span>
+                            <Info className="w-3 h-3 text-gray-400" />
+                          </div>
+                          <p className="text-sm font-medium text-gray-700 mt-2">
+                            Included in the price:
+                          </p>
+                          {basicCover.included.map((item, idx) => (
                             <div key={idx} className="flex items-start gap-2">
-                              <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-gray-500 line-through">
-                                {item}
-                              </span>
+                              <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-gray-700">{item.name}</span>
                             </div>
                           ))}
                         </div>
-                      )}
 
-                      <a href="#" className="text-sm text-blue-600 hover:underline">
-                        See more
-                      </a>
+                        {basicCover.excluded.length > 0 && (
+                          <div className="space-y-2 mb-4">
+                            <p className="text-sm font-medium text-gray-700">
+                              Excluded:
+                            </p>
+                            {basicCover.excluded.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-500 line-through">
+                                  {item}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      <Button
-                        type="button"
-                        onClick={() => handleCoverageSelect("basic")}
-                        className={`w-full mt-4 ${
-                          selectedCoverage === "basic"
+                        <a href="#" className="text-sm text-blue-600 hover:underline">
+                          See more
+                        </a>
+
+                        <Button
+                          type="button"
+                          onClick={() => handleCoverageSelect("basic")}
+                          className={`w-full mt-4 ${selectedCoverage === "basic"
                             ? "bg-blue-600 hover:bg-blue-700"
                             : "bg-blue-600 hover:bg-blue-700"
-                        } text-white`}
-                      >
-                        {selectedCoverage === "basic" ? (
-                          <span className="flex items-center gap-2">
-                            <Check className="w-4 h-4" />
-                            Included
-                          </span>
-                        ) : (
-                          "Select"
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Premium Cover */}
-                <div
-                  className={`border-2 rounded-lg overflow-hidden ${
-                    selectedCoverage === "premium"
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  <div className={`${selectedCoverage === "premium" ? "bg-blue-600" : "bg-gray-600"} text-white px-4 py-2 text-xs font-semibold`}>
-                    {selectedCoverage === "premium" ? "SELECTED" : premiumCover.status}
-                  </div>
-                  <div className="p-4">
-                    <div className="mb-4">
-                      {showBasicCover ? (
-                        <>
-                          <p className="text-sm text-gray-500 line-through mb-1">
-                            15,36 €
-                          </p>
-                          <p className="text-lg font-bold text-gray-900">
-                            {premiumDailyPrice.toFixed(2)} €/day
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-2xl font-bold text-gray-900">
-                            {premiumTotal.toFixed(2)} €
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            for {rentalDays} days
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <p className="text-sm font-medium text-gray-700">
-                        Included in the price:
-                      </p>
-                      {premiumCover.included.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm text-gray-700">{item.name}</span>
-                            {item.hasInfo && (
-                              <Info className="w-3 h-3 text-gray-400" />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {premiumCover.excluded.length > 0 && (
-                      <div className="space-y-2 mb-4">
-                        <p className="text-sm font-medium text-gray-700">
-                          Excluded:
-                        </p>
-                        {premiumCover.excluded.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-2">
-                            <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-sm text-gray-500 line-through">
-                              {item}
+                            } text-white`}
+                        >
+                          {selectedCoverage === "basic" ? (
+                            <span className="flex items-center gap-2">
+                              <Check className="w-4 h-4" />
+                              Included
                             </span>
-                          </div>
-                        ))}
+                          ) : (
+                            "Select"
+                          )}
+                        </Button>
                       </div>
-                    )}
-
-                    <a href="#" className="text-sm text-blue-600 hover:underline">
-                      See more
-                    </a>
-
-                    <Button
-                      type="button"
-                      onClick={() => handleCoverageSelect("premium")}
-                      className={`w-full mt-4 ${
-                        selectedCoverage === "premium"
-                          ? "bg-blue-600 hover:bg-blue-700"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      } text-white`}
-                    >
-                      {selectedCoverage === "premium" ? (
-                        <span className="flex items-center gap-2">
-                          <Check className="w-4 h-4" />
-                          Included
-                        </span>
-                      ) : (
-                        "Select"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Super Premium Cover */}
-                <div
-                  className={`border-2 rounded-lg overflow-hidden ${
-                    selectedCoverage === "superPremium"
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  <div className={`${selectedCoverage === "superPremium" ? "bg-blue-600" : "bg-gray-600"} text-white px-4 py-2 text-xs font-semibold`}>
-                    {selectedCoverage === "superPremium" ? "SELECTED" : superPremiumCover.status}
-                  </div>
-                  <div className="p-4">
-                    <div className="mb-4">
-                      <p className="text-lg font-bold text-gray-900">
-                        {superPremiumDailyPrice.toFixed(2)} €/day
-                      </p>
                     </div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <p className="text-sm font-medium text-gray-700">
-                        Included in the price:
-                      </p>
-                      {superPremiumCover.included.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm text-gray-700">{item.name}</span>
-                            {item.hasInfo && (
-                              <Info className="w-3 h-3 text-gray-400" />
-                            )}
-                          </div>
+                  )}
+
+                  {/* Premium Cover - Show for SMART and STANDARD */}
+                  {showPremiumCover && (
+                    <div
+                      className={`border-2 rounded-lg overflow-hidden ${selectedCoverage === "premium"
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 bg-white"
+                        }`}
+                    >
+                      <div className={`${selectedCoverage === "premium" ? "bg-blue-600" : "bg-gray-600"} text-white px-4 py-2 text-xs font-semibold`}>
+                        {selectedCoverage === "premium" ? "SELECTED" : premiumCover.status}
+                      </div>
+                      <div className="p-4">
+                        <div className="mb-4">
+                          {showBasicCover ? (
+                            <>
+                              <p className="text-sm text-gray-500 line-through mb-1">
+                                15,36 €
+                              </p>
+                              <p className="text-lg font-bold text-gray-900">
+                                {premiumDailyPrice.toFixed(2)} €/day
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-2xl font-bold text-gray-900">
+                                {premiumTotal.toFixed(2)} €
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                for {rentalDays} days
+                              </p>
+                            </>
+                          )}
                         </div>
-                      ))}
+
+                        <div className="space-y-2 mb-4">
+                          <p className="text-sm font-medium text-gray-700">
+                            Included in the price:
+                          </p>
+                          {premiumCover.included.map((item, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm text-gray-700">{item.name}</span>
+                                {item.hasInfo && (
+                                  <Info className="w-3 h-3 text-gray-400" />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {premiumCover.excluded.length > 0 && (
+                          <div className="space-y-2 mb-4">
+                            <p className="text-sm font-medium text-gray-700">
+                              Excluded:
+                            </p>
+                            {premiumCover.excluded.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-500 line-through">
+                                  {item}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <a href="#" className="text-sm text-blue-600 hover:underline">
+                          See more
+                        </a>
+
+                        <Button
+                          type="button"
+                          onClick={() => handleCoverageSelect("premium")}
+                          className={`w-full mt-4 ${selectedCoverage === "premium"
+                            ? "bg-blue-600 hover:bg-blue-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                            } text-white`}
+                        >
+                          {selectedCoverage === "premium" ? (
+                            <span className="flex items-center gap-2">
+                              <Check className="w-4 h-4" />
+                              Included
+                            </span>
+                          ) : (
+                            "Select"
+                          )}
+                        </Button>
+                      </div>
                     </div>
+                  )}
 
-                    <a href="#" className="text-sm text-blue-600 hover:underline">
-                      See more
-                    </a>
-
-                    <Button
-                      type="button"
-                      onClick={() => handleCoverageSelect("superPremium")}
-                      className={`w-full mt-4 ${
-                        selectedCoverage === "superPremium"
-                          ? "bg-blue-600 hover:bg-blue-700"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      } text-white`}
+                  {/* Super Premium Cover - Show only for STANDARD */}
+                  {showSuperPremiumCover && (
+                    <div
+                      className={`border-2 rounded-lg overflow-hidden ${selectedCoverage === "superPremium"
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 bg-white"
+                        }`}
                     >
-                      {selectedCoverage === "superPremium" ? (
-                        <span className="flex items-center gap-2">
-                          <Check className="w-4 h-4" />
-                          Included
-                        </span>
-                      ) : (
-                        "Select"
-                      )}
-                    </Button>
-                  </div>
+                      <div className={`${selectedCoverage === "superPremium" ? "bg-blue-600" : "bg-gray-600"} text-white px-4 py-2 text-xs font-semibold`}>
+                        {selectedCoverage === "superPremium" ? "SELECTED" : superPremiumCover.status}
+                      </div>
+                      <div className="p-4">
+                        <div className="mb-4">
+                          <p className="text-lg font-bold text-gray-900">
+                            {superPremiumDailyPrice.toFixed(2)} €/day
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <p className="text-sm font-medium text-gray-700">
+                            Included in the price:
+                          </p>
+                          {superPremiumCover.included.map((item, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm text-gray-700">{item.name}</span>
+                                {item.hasInfo && (
+                                  <Info className="w-3 h-3 text-gray-400" />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <a href="#" className="text-sm text-blue-600 hover:underline">
+                          See more
+                        </a>
+
+                        <Button
+                          type="button"
+                          onClick={() => handleCoverageSelect("superPremium")}
+                          className={`w-full mt-4 ${selectedCoverage === "superPremium"
+                            ? "bg-blue-600 hover:bg-blue-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                            } text-white`}
+                        >
+                          {selectedCoverage === "superPremium" ? (
+                            <span className="flex items-center gap-2">
+                              <Check className="w-4 h-4" />
+                              Included
+                            </span>
+                          ) : (
+                            "Select"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Show message for PREMIUM package (no cards to show) */}
+              {selectedPackage === "premium" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                  <p className="text-sm text-gray-700">
+                    Your Premium package already includes maximum coverage. No additional coverage options available.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Extras Section */}
@@ -584,7 +634,7 @@ export default function Step1Rental({ onNext }) {
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 Other coverages, options and complements:
               </h2>
-              
+
               <div className="space-y-4">
                 {extrasData
                   .filter((extra, index) => {
@@ -593,179 +643,178 @@ export default function Step1Rental({ onNext }) {
                     return showMoreExtras;
                   })
                   .map((extra) => {
-                  const isIncluded = isExtraIncluded(extra.id);
-                  const isFastTrack = extra.id === "fastTrack";
-                  const isChildSeat = extra.id === "childSeat";
-                  // Fast Track is included in both Premium and Super Premium coverage
-                  const isIncludedInCoverage = isFastTrack && (selectedCoverage === "premium" || selectedCoverage === "superPremium");
+                    const isIncluded = isExtraIncluded(extra.id);
+                    const isFastTrack = extra.id === "fastTrack";
+                    const isChildSeat = extra.id === "childSeat";
+                    // Fast Track is included in both Premium and Super Premium coverage
+                    const isIncludedInCoverage = isFastTrack && (selectedCoverage === "premium" || selectedCoverage === "superPremium");
 
-                  return (
-                    <div
-                      key={extra.id}
-                      className="border border-gray-200 rounded-lg p-4 bg-white"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-base font-semibold text-gray-900 mb-1">
-                            {extra.name}
-                          </h4>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {extra.description}
-                          </p>
-                          {extra.includes && (
-                            <ul className="list-disc list-inside text-sm text-gray-600 mb-2 space-y-1">
-                              {extra.includes.map((item, idx) => (
-                                <li key={idx}>{item}</li>
-                              ))}
-                            </ul>
-                          )}
-                          {extra.id === "foundationDonation" && (
-                            <div className="flex gap-2 mt-2">
-                              {extra.donationOptions?.map((amount) => (
-                                <Button
-                                  key={amount}
-                                  type="button"
-                                  variant={
-                                    donationAmount === amount
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  onClick={() => {
-                                    if (amount === 0) {
-                                      setCustomDonation("");
-                                      setDonationAmount(0);
-                                      // Remove donation if no amount selected
-                                      const current = form.getValues("extras") || [];
-                                      const updated = current.filter((e) => e !== extra.id);
-                                      form.setValue("extras", updated, { shouldDirty: true });
-                                      bookingStorage.updateStep("step1", {
-                                        ...bookingStorage.getStep("step1"),
-                                        extras: updated,
-                                      });
-                                    } else {
-                                      setDonationAmount(amount);
-                                      setCustomDonation("");
-                                      // Add donation to extras
-                                      const current = form.getValues("extras") || [];
-                                      if (!current.includes(extra.id)) {
-                                        const updated = [...current, extra.id];
+                    return (
+                      <div
+                        key={extra.id}
+                        className="border border-gray-200 rounded-lg p-4 bg-white"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="text-base font-semibold text-gray-900 mb-1">
+                              {extra.name}
+                            </h4>
+                            <p className="text-sm text-gray-600 mb-2">
+                              {extra.description}
+                            </p>
+                            {extra.includes && (
+                              <ul className="list-disc list-inside text-sm text-gray-600 mb-2 space-y-1">
+                                {extra.includes.map((item, idx) => (
+                                  <li key={idx}>{item}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {extra.id === "foundationDonation" && (
+                              <div className="flex gap-2 mt-2">
+                                {extra.donationOptions?.map((amount) => (
+                                  <Button
+                                    key={amount}
+                                    type="button"
+                                    variant={
+                                      donationAmount === amount
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() => {
+                                      if (amount === 0) {
+                                        setCustomDonation("");
+                                        setDonationAmount(0);
+                                        // Remove donation if no amount selected
+                                        const current = form.getValues("extras") || [];
+                                        const updated = current.filter((e) => e !== extra.id);
                                         form.setValue("extras", updated, { shouldDirty: true });
                                         bookingStorage.updateStep("step1", {
                                           ...bookingStorage.getStep("step1"),
                                           extras: updated,
                                         });
-                                      }
-                                    }
-                                  }}
-                                >
-                                  {amount === 0 ? "Otra..." : `${amount}€`}
-                                </Button>
-                              ))}
-                              {donationAmount === 0 && (
-                                <div className="flex gap-2">
-                                  <Input
-                                    type="number"
-                                    placeholder="Amount"
-                                    value={customDonation}
-                                    onChange={(e) => setCustomDonation(e.target.value)}
-                                    className="w-24"
-                                  />
-                                  {customDonation && parseFloat(customDonation) > 0 && (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={() => {
-                                        const amount = parseFloat(customDonation);
-                                        if (amount > 0) {
-                                          setDonationAmount(amount);
-                                          // Add donation to extras
-                                          const current = form.getValues("extras") || [];
-                                          if (!current.includes(extra.id)) {
-                                            const updated = [...current, extra.id];
-                                            form.setValue("extras", updated, { shouldDirty: true });
-                                            bookingStorage.updateStep("step1", {
-                                              ...bookingStorage.getStep("step1"),
-                                              extras: updated,
-                                            });
-                                          }
+                                      } else {
+                                        setDonationAmount(amount);
+                                        setCustomDonation("");
+                                        // Add donation to extras
+                                        const current = form.getValues("extras") || [];
+                                        if (!current.includes(extra.id)) {
+                                          const updated = [...current, extra.id];
+                                          form.setValue("extras", updated, { shouldDirty: true });
+                                          bookingStorage.updateStep("step1", {
+                                            ...bookingStorage.getStep("step1"),
+                                            extras: updated,
+                                          });
                                         }
-                                      }}
-                                    >
-                                      Apply
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <p className="text-sm font-medium text-gray-900 mt-2">
-                            {extra.price === 0
-                              ? "0,00 €"
-                              : `${extra.price.toFixed(2)} €/${
-                                  extra.pricingType === "per_day" ? "day" : "booking"
+                                      }
+                                    }}
+                                  >
+                                    {amount === 0 ? "Otra..." : `${amount}€`}
+                                  </Button>
+                                ))}
+                                {donationAmount === 0 && (
+                                  <div className="flex gap-2">
+                                    <Input
+                                      type="number"
+                                      placeholder="Amount"
+                                      value={customDonation}
+                                      onChange={(e) => setCustomDonation(e.target.value)}
+                                      className="w-24"
+                                    />
+                                    {customDonation && parseFloat(customDonation) > 0 && (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => {
+                                          const amount = parseFloat(customDonation);
+                                          if (amount > 0) {
+                                            setDonationAmount(amount);
+                                            // Add donation to extras
+                                            const current = form.getValues("extras") || [];
+                                            if (!current.includes(extra.id)) {
+                                              const updated = [...current, extra.id];
+                                              form.setValue("extras", updated, { shouldDirty: true });
+                                              bookingStorage.updateStep("step1", {
+                                                ...bookingStorage.getStep("step1"),
+                                                extras: updated,
+                                              });
+                                            }
+                                          }
+                                        }}
+                                      >
+                                        Apply
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-sm font-medium text-gray-900 mt-2">
+                              {extra.price === 0
+                                ? "0,00 €"
+                                : `${extra.price.toFixed(2)} €/${extra.pricingType === "per_day" ? "day" : "booking"
                                 }`}
-                          </p>
-                        </div>
-                        <div className="ml-4">
-                          {isIncludedInCoverage ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 border-red-300"
-                              onClick={() => {
-                                // Remove from extras but it's still included in coverage
-                                const current = form.getValues("extras") || [];
-                                const updated = current.filter((e) => e !== extra.id);
-                                form.setValue("extras", updated, { shouldDirty: true });
-                                bookingStorage.updateStep("step1", {
-                                  ...bookingStorage.getStep("step1"),
-                                  extras: updated,
-                                });
-                              }}
-                            >
-                              REMOVE
-                            </Button>
-                          ) : isIncluded ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-green-600 border-green-300 hover:bg-green-50"
-                              onClick={() => handleExtraToggle(extra.id)}
-                            >
-                              <span className="flex items-center gap-1">
-                                <Check className="w-4 h-4" />
-                                INCLUDED
-                              </span>
-                            </Button>
-                          ) : isChildSeat ? (
-                            <Button
-                              type="button"
-                              variant="default"
-                              size="sm"
-                              onClick={() => setIsChildSeatModalOpen(true)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              ADD+
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleExtraToggle(extra.id)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              ADD+
-                            </Button>
-                          )}
+                            </p>
+                          </div>
+                          <div className="ml-4">
+                            {isIncludedInCoverage ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-300"
+                                onClick={() => {
+                                  // Remove from extras but it's still included in coverage
+                                  const current = form.getValues("extras") || [];
+                                  const updated = current.filter((e) => e !== extra.id);
+                                  form.setValue("extras", updated, { shouldDirty: true });
+                                  bookingStorage.updateStep("step1", {
+                                    ...bookingStorage.getStep("step1"),
+                                    extras: updated,
+                                  });
+                                }}
+                              >
+                                REMOVE
+                              </Button>
+                            ) : isIncluded ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-green-600 border-green-300 hover:bg-green-50"
+                                onClick={() => handleExtraToggle(extra.id)}
+                              >
+                                <span className="flex items-center gap-1">
+                                  <Check className="w-4 h-4" />
+                                  INCLUDED
+                                </span>
+                              </Button>
+                            ) : isChildSeat ? (
+                              <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                onClick={() => setIsChildSeatModalOpen(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                ADD+
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleExtraToggle(extra.id)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                ADD+
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
 
               {extrasData.length > 3 && (
@@ -960,7 +1009,7 @@ export default function Step1Rental({ onNext }) {
                       childSeatQuantities.babySeat +
                       childSeatQuantities.childSeat +
                       childSeatQuantities.boosterSeat;
-                    
+
                     if (totalSeats > 0) {
                       // Add child seat to extras
                       const current = form.getValues("extras") || [];

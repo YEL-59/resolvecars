@@ -91,7 +91,7 @@ const pricingPlans = [
     name: "PREMIUM",
     headerColor: "bg-blue-900",
     features: [
-      { text: "Activation", badge: "FASTTRACK", badgeIcon: true },
+      { text: "Activation", badge: "RECOMENDED", badgeIcon: true },
       { text: "Premium coverage included", hasInfo: true },
       { text: "Free cancellation and modification" },
       { text: "No Excess" },
@@ -114,18 +114,18 @@ const pricingPlans = [
     discount: 20,
     originalPrice: 30.71,
   },
-  {
-    id: "lite",
-    name: "LITE",
-    headerColor: "bg-gray-600",
-    features: [
-      { text: "Fuel tank full/ full" },
-      { text: "Non-refundable" },
-      { text: "Excess", hasInfo: true },
-    ],
-    discount: 20,
-    originalPrice: 13.75,
-  },
+  // {
+  //   id: "lite",
+  //   name: "LITE",
+  //   headerColor: "bg-gray-600",
+  //   features: [
+  //     { text: "Fuel tank full/ full" },
+  //     { text: "Non-refundable" },
+  //     { text: "Excess", hasInfo: true },
+  //   ],
+  //   discount: 20,
+  //   originalPrice: 13.75,
+  // },
   {
     id: "standard",
     name: "STANDARD",
@@ -490,7 +490,7 @@ export default function CarsCardSection() {
 
                     {/* Right Section - Pricing Plan Cards */}
                     <div className="lg:w-2/3 p-4 lg:p-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-x-auto">
                         {plansWithPricing.map((plan) => (
                           <div
                             key={plan.id}
