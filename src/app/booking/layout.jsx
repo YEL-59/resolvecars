@@ -43,7 +43,7 @@ export default function BookingLayout({ children }) {
       <div className="min-h-screen bg-white">
         {/* Header */}
         <div className="bg-white">
-          <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="container mx-auto px-4 py-6">
             <div className="flex items-center justify-between mb-4">
               <Link
                 href="/cars"
@@ -96,17 +96,17 @@ export default function BookingLayout({ children }) {
                   const isDone = currentStep > step.id;
                   const isNext = currentStep + 1 === step.id;
                   const canClick = true; // allow forward and backward navigation
-                    
+
                   const circle = isCurrent
                     ? "bg-rose-500 text-white ring-2 ring-rose-200"
                     : isDone
-                    ? "bg-rose-200 text-rose-700"
-                    : isNext
-                    ? "bg-white text-rose-500 border border-rose-200"
-                    : "bg-white text-gray-600 border border-gray-300";
-                    
+                      ? "bg-rose-200 text-rose-700"
+                      : isNext
+                        ? "bg-white text-rose-500 border border-rose-200"
+                        : "bg-white text-gray-600 border border-gray-300";
+
                   const label = isCurrent ? "text-rose-600" : "text-gray-700";
-                   
+
                   return (
                     <div key={step.id} className="flex items-center flex-1">
                       {canClick ? (
@@ -126,13 +126,12 @@ export default function BookingLayout({ children }) {
                       )}
                       {index < steps.length - 1 && (
                         <div
-                          className={`h-[2px] mx-6 flex-1 bg-gradient-to-r ${
-                            isDone
-                              ? "from-rose-300 to-rose-100"
-                              : isCurrent
+                          className={`h-[2px] mx-6 flex-1 bg-gradient-to-r ${isDone
+                            ? "from-rose-300 to-rose-100"
+                            : isCurrent
                               ? "from-rose-500 to-rose-100"
                               : "from-gray-200 to-gray-100"
-                          }`}
+                            }`}
                         />
                       )}
                     </div>
@@ -144,7 +143,7 @@ export default function BookingLayout({ children }) {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
+        <div className="container mx-auto px-4 py-8">{children}</div>
       </div>
     </Layout>
   );

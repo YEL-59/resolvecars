@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,16 +19,64 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Star, Grid3X3, List, Heart } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Star, Grid3X3, List, Plane, Users, Car as CarIcon, Info, Check } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
-import { favoritesStorage } from "@/lib/favoritesStorage";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { carsData } from "@/lib/carsData";
 
-// CarsData is now imported from shared module
+// Sample car data (fallback if needed)
+const localCarsData = [
+  {
+    id: 1,
+    name: "BMW 3 Series",
+    image: "/assets/cars/bmw-3.png",
+    type: "SEDAN",
+    year: 2025,
+    price: 299,
+    originalPrice: 399,
+    discount: 25,
+    rating: 4.0,
+    passengers: 4,
+    transmission: "automatic",
+    fuelType: "gasoline",
+    features: [
+      "Premium Sound System",
+      "BOSE Sound System",
+      "Leather Seats",
+      "Premium coverage included",
+      "Fuel tank full/full",
+    ],
+    description:
+      "Experience luxury and performance with the BMW 3 Series. Perfect for business trips...",
+  },
+  {
+    id: 2,
+    name: "Mercedes GLC",
+    image: "/assets/cars/mercedes-glc.png",
+    type: "SUV",
+    year: 2025,
+    price: 349,
+    originalPrice: 449,
+    discount: 20,
+    rating: 4.5,
+    passengers: 5,
+    transmission: "automatic",
+    fuelType: "hybrid",
+    features: [
+      "Premium Sound System",
+      "Panoramic Sunroof",
+      "Leather Seats",
+      "Premium coverage included",
+      "Fuel tank full/full",
+    ],
+    description:
+      "Luxury SUV with advanced features and comfortable interior...",
+  },
+  // Add more cars here...
+];
 
-const categories = ["All", ...Array.from(new Set(carsData.map((c) => c.type)))];
+const categories = ["All Categories", "Luxury", "SUV", "Sports", "Electric"];
 const sortOptions = [
   "Name (A-Z)",
   "Price (Low to High)",
@@ -36,43 +84,98 @@ const sortOptions = [
   "Rating",
 ];
 
+// Pricing plans data
+const pricingPlans = [
+  {
+    id: "premium",
+    name: "PREMIUM",
+    headerColor: "bg-blue-900",
+    features: [
+      { text: "Activation", badge: "FASTTRACK", badgeIcon: true },
+      { text: "Premium coverage included", hasInfo: true },
+      { text: "Free cancellation and modification" },
+      { text: "No Excess" },
+      { text: "Fuel tank full/ full" },
+      { text: "Refundable" },
+    ],
+    discount: 20,
+    originalPrice: 32.29,
+  },
+  {
+    id: "smart",
+    name: "SMART",
+    headerColor: "bg-blue-900",
+    features: [
+      { text: "Premium coverage included", hasInfo: true },
+      { text: "No Excess" },
+      { text: "Fuel tank full/ full" },
+      { text: "Non-refundable" },
+    ],
+    discount: 20,
+    originalPrice: 30.71,
+  },
+  {
+    id: "lite",
+    name: "LITE",
+    headerColor: "bg-gray-600",
+    features: [
+      { text: "Fuel tank full/ full" },
+      { text: "Non-refundable" },
+      { text: "Excess", hasInfo: true },
+    ],
+    discount: 20,
+    originalPrice: 13.75,
+  },
+  {
+    id: "standard",
+    name: "STANDARD",
+    headerColor: "bg-gray-600",
+    features: [
+      { text: "Basic coverage" },
+      { text: "Excess", hasInfo: true },
+      { text: "Non-refundable" },
+    ],
+    discount: 15,
+    originalPrice: 15.50,
+  },
+];
+
 export default function CarsCardSection() {
   const router = useRouter();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [sortBy, setSortBy] = useState("Name (A-Z)");
   const [visibleCars, setVisibleCars] = useState(10);
   const [viewMode, setViewMode] = useState("flex"); // Default to flex view
-  const [savedIds, setSavedIds] = useState([]);
+  const [rentalDays, setRentalDays] = useState(23);
 
+  // Calculate rental days from booking storage
   useEffect(() => {
-    setSavedIds(favoritesStorage.getAll().map((v) => v.id));
+    const step1Data = bookingStorage.getStep("step1") || {};
+    if (step1Data.pickupDate && step1Data.dropoffDate) {
+      try {
+        const pickup = new Date(step1Data.pickupDate);
+        const dropoff = new Date(step1Data.dropoffDate);
+        const diffTime = Math.abs(dropoff - pickup);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setRentalDays(diffDays > 0 ? diffDays : 23);
+      } catch {
+        setRentalDays(23);
+      }
+    }
   }, []);
 
-  const isSaved = (id) => savedIds?.some((v) => String(v) === String(id));
-
-  const toggleFavorite = (car) => {
-    const list = favoritesStorage.toggle(car);
-    setSavedIds(list.map((v) => v.id));
-  };
-
-  const handleBookNow = (car) => {
-    // Store the selected car in localStorage
-    bookingStorage.setCar(car);
-    // Redirect to booking page
-    router.push('/booking/step1');
-  };
-
   // Filter and sort cars
-  const filteredCars = carsData
+  const filteredCars = (carsData || localCarsData)
     .filter((car) => {
       const matchesSearch = car.name
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
       const matchesCategory =
-        selectedCategory === "All" || car.type === selectedCategory;
+        selectedCategory === "All Categories" ||
+        car.category === selectedCategory;
       const matchesPrice =
         car.price >= priceRange[0] && car.price <= priceRange[1];
       return matchesSearch && matchesCategory && matchesPrice;
@@ -225,19 +328,9 @@ export default function CarsCardSection() {
                   />
                   <div className="absolute top-4 left-4">
                     <span className="bg-primary text-white px-2 py-1 rounded text-sm">
-                      {car.type}
-                      </span>
+                      {car.category}
+                    </span>
                   </div>
-                  <button
-                    aria-label={isSaved(car.id) ? "Unsave vehicle" : "Save vehicle"}
-                    onClick={() => toggleFavorite(car)}
-                    className="absolute top-3 right-3 rounded-full p-2 bg-white/90 hover:bg-white shadow"
-                  >
-                    <Heart
-                      className={isSaved(car.id) ? "w-5 h-5 text-rose-500" : "w-5 h-5 text-gray-600"}
-                      fill={isSaved(car.id) ? "currentColor" : "none"}
-                    />
-                  </button>
                 </div>
 
                 <div className="p-4">
@@ -256,11 +349,10 @@ export default function CarsCardSection() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-4 h-4 ${
-                            i < Math.floor(car.rating)
-                              ? "text-yellow-400 fill-current"
-                              : "text-gray-300"
-                          }`}
+                          className={`w-4 h-4 ${i < Math.floor(car.rating)
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-300"
+                            }`}
                         />
                       ))}
                     </div>
@@ -280,243 +372,217 @@ export default function CarsCardSection() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span>Fuel:</span>
-                      <span className="font-medium">{car.fuelType}</span>
+                      <span className="font-medium">{car.fuel}</span>
                     </div>
                   </div>
 
-                  <Link href={`/cars/${car.id}`}>
-                    <Button className="w-full">View Details</Button>
-                  </Link>
-                  <Button 
-                    className="w-full mt-2" 
-                    onClick={() => handleBookNow(car)}
-                  >
-                    Book Now
-                  </Button>
+                  <Button className="w-full">Book Now</Button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          // Flex View (horizontal card design)
-          <div className="space-y-4">
-            {displayedCars.map((car) => (
-              <div
-                key={car.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <div className="flex flex-col md:flex-row justify-between items-center gap-5 px-4 md:px-10">
-                  {/* Left Section - Image */}
-                  <div className="  relative w-full md:w-80 h-64 md:h-[220px]">
-                    <Image
-                      src={car.image}
-                      alt={car.name}
-                      fill
-                      className="object-contain"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <span className="bg-yellow-400 text-black px-3 py-1 rounded-full text-sm font-medium">
-                        {car.type}
-                      </span>
-                    </div>
-                    <button
-                      aria-label={isSaved(car.id) ? "Unsave vehicle" : "Save vehicle"}
-                      onClick={() => toggleFavorite(car)}
-                      className="absolute top-3 right-3 rounded-full p-2 bg-white/90 hover:bg-white shadow"
-                    >
-                      <Heart
-                        className={isSaved(car.id) ? "w-5 h-5 text-rose-500" : "w-5 h-5 text-gray-600"}
-                        fill={isSaved(car.id) ? "currentColor" : "none"}
-                      />
-                    </button>
-                  </div>
+          // Flex View (horizontal card design matching image)
+          <div className="space-y-6">
+            {displayedCars.map((car) => {
+              // Calculate pricing for each plan
+              const plansWithPricing = pricingPlans.map((plan) => {
+                const currentPrice = plan.originalPrice * (1 - plan.discount / 100);
+                const totalPrice = currentPrice * rentalDays;
+                return {
+                  ...plan,
+                  currentPrice: currentPrice.toFixed(2),
+                  totalPrice: totalPrice.toFixed(0),
+                };
+              });
 
-                  {/* Right Section - Content */}
-                  <div className="  p-5">
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-2xl font-semibold">{car.name}</h3>
-                          <span className="text-gray-600">{car.year}</span>
-                        </div>
-                        <p className="text-gray-600 text-sm mb-2 max-w-[300px] py-2">
-                          {car.description}
-                        </p>
-                        {/* Icons */}
-                        <div className="flex items-center gap-6">
-                          <div className="flex items-center gap-2">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-gray-500"
-                            >
-                              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
-                              <circle cx="7" cy="17" r="2"></circle>
-                              <path d="M9 17h6"></path>
-                              <circle cx="17" cy="17" r="2"></circle>
-                            </svg>
-                            <span className="text-sm text-gray-500">
-                              {car.passengers}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-gray-500"
-                            >
-                              <circle cx="12" cy="12" r="10"></circle>
-                              <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                              <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                              <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                            </svg>
-                            <span className="text-sm text-gray-500">
-                              {car.transmission}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-gray-500"
-                            >
-                              <path d="M3 22v-3"></path>
-                              <path d="M6 22v-3"></path>
-                              <path d="M9 22v-3"></path>
-                              <path d="M12 22v-3"></path>
-                              <path d="M15 22v-3"></path>
-                              <path d="M18 22v-3"></path>
-                              <path d="M21 22v-3"></path>
-                              <path d="M3 14v-3"></path>
-                              <path d="M21 14v-3"></path>
-                              <path d="M3 6V3"></path>
-                              <path d="M21 6V3"></path>
-                              <path d="M9 14v-3"></path>
-                              <path d="M15 14v-3"></path>
-                              <path d="M9 6V3"></path>
-                              <path d="M15 6V3"></path>
-                              <path d="M6 14h.01"></path>
-                              <path d="M12 14h.01"></path>
-                              <path d="M18 14h.01"></path>
-                              <path d="M6 6h.01"></path>
-                              <path d="M12 6h.01"></path>
-                              <path d="M18 6h.01"></path>
-                            </svg>
-                            <span className="text-sm text-gray-500">
-                              {car.fuelType}
-                            </span>
-                          </div>
-                        </div>
+              // Get transmission display (M for manual, A for automatic)
+              const transmissionDisplay = car.transmission === "manual" ? "M" : "A";
+              // Calculate doors (assuming 5 for sedans/SUVs, 3 for coupes)
+              const doors = car.type === "SPORTS" ? 3 : 5;
 
-                        <div className="flex items-center gap-2 py-2">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-4 h-4 ${
-                                  i < Math.floor(car.rating)
-                                    ? "text-yellow-400 fill-current"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            ({car.rating})
-                          </span>
-                        </div>
+              return (
+                <div
+                  key={car.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex flex-col lg:flex-row">
+                    {/* Left Section - Car Details */}
+                    <div className="lg:w-1/3 p-4 lg:p-6 border-r-0 lg:border-r border-gray-200 border-b lg:border-b-0 pb-4 lg:pb-6">
+                      {/* Car Model Name */}
+                      <h3 className="text-2xl font-bold text-blue-600 mb-2">
+                        {car.name} or similar
+                      </h3>
+
+                      {/* Car Type */}
+                      <p className="text-sm text-gray-600 mb-4">{car.type}</p>
+
+                      {/* Collection Info */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <Plane className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-700 uppercase">
+                          COLLECTION AT AIRPORT TERMINAL
+                        </span>
                       </div>
-                    </div>
-                  </div>
 
-                  <div>
-                    {/* Features */}
-                    <div className="space-y-1 mb-6">
-                      <h1 className="text-lg font-bold">Details</h1>
-                      {car.features.slice(0, 3).map((feature, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 text-sm text-gray-600"
-                        >
+                      {/* Best Price Badge */}
+                      <div className="mb-4">
+                        <span className="text-red-600 text-sm font-medium">
+                          Best price for these dates
+                        </span>
+                      </div>
+
+                      {/* Car Image */}
+                      <div className="relative w-full h-48 mb-4 bg-gray-50 rounded-lg overflow-hidden">
+                        <Image
+                          src={car.image}
+                          alt={car.name}
+                          fill
+                          className="object-contain p-4"
+                        />
+                      </div>
+
+                      {/* Specifications */}
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-gray-600" />
+                          <span className="text-sm font-medium">{car.passengers}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CarIcon className="w-5 h-5 text-gray-600" />
+                          <span className="text-sm font-medium">{doors}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="20"
+                            height="20"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="text-green-500"
+                            className="text-gray-600"
                           >
-                            <polyline points="20 6 9 17 4 12"></polyline>
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <path d="M9 9h6v6H9z" />
+                            <path d="M3 9h6" />
+                            <path d="M15 9h6" />
+                            <path d="M3 15h6" />
+                            <path d="M15 15h6" />
+                            <path d="M9 3v6" />
+                            <path d="M9 15v6" />
+                            <path d="M15 3v6" />
+                            <path d="M15 15v6" />
                           </svg>
-                          {feature}
-                        </div>
-                      ))}
-                      <button className="text-sm text-primary hover:underline mt-1">
-                        {car.features.length - 3} more
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Price and Action */}
-                  <div className="flex flex-col items-center justify-center">
-                    <div>
-                      <div className="flex flex-col items-center gap-2 mb-1">
-                        <span className="text-2xl font-bold">
-                          ${car.price}/day
-                        </span>
-                        <div>
-                          <span className="line-through text-gray-400">
-                            ${car.originalPrice}/day
-                          </span>
-                          <span className="bg-red-100 text-red-500 px-2 py-0.5 rounded text-sm">
-                            -{car.discount}%
-                          </span>
+                          <span className="text-sm font-medium">{transmissionDisplay}</span>
                         </div>
                       </div>
+
+                      {/* Unlimited Mileage */}
+                      <div className="mt-4">
+                        <span className="text-sm font-semibold uppercase text-gray-700">
+                          UNLIMITED MILEAGE
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Link href={`/cars/${car.id}`}>
-                        <Button className="bg-primary hover:bg-primary/90 text-white px-8">
-                          view Details
-                        </Button>
-                      </Link>
-                      <Button 
-                        className="bg-primary hover:bg-primary/90 text-white px-8"
-                        onClick={() => handleBookNow(car)}
-                      >
-                        Book now
-                      </Button>
+
+                    {/* Right Section - Pricing Plan Cards */}
+                    <div className="lg:w-2/3 p-4 lg:p-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto">
+                        {plansWithPricing.map((plan) => (
+                          <div
+                            key={plan.id}
+                            className="flex flex-col border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow min-w-[200px]"
+                          >
+                            {/* Header */}
+                            <div
+                              className={`${plan.headerColor} text-white px-4 py-3 flex items-center justify-between`}
+                            >
+                              <span className="font-semibold text-sm">{plan.name}</span>
+                              <Info className="w-4 h-4" />
+                            </div>
+
+                            {/* Features */}
+                            <div className="flex-1 bg-white p-4 space-y-2">
+                              {plan.features.map((feature, idx) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs text-gray-700">{feature.text}</span>
+                                    {feature.badge && (
+                                      <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                        {feature.badgeIcon && (
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          >
+                                            <line x1="3" y1="12" x2="21" y2="12" />
+                                            <line x1="3" y1="8" x2="21" y2="8" />
+                                            <line x1="3" y1="16" x2="21" y2="16" />
+                                            <circle cx="12" cy="12" r="1" />
+                                          </svg>
+                                        )}
+                                        {feature.badge}
+                                        <Info className="w-3 h-3" />
+                                      </span>
+                                    )}
+                                    {feature.hasInfo && (
+                                      <Info className="w-3 h-3 text-gray-400" />
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Pricing */}
+                            <div className="bg-white p-4 border-t border-gray-100">
+                              <div className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded inline-block mb-2">
+                                -{plan.discount}%
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500 line-through">
+                                  {plan.originalPrice.toFixed(2)} €/day
+                                </p>
+                                <p className="text-lg font-bold text-gray-900">
+                                  {plan.currentPrice} € /day
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {plan.totalPrice} € {rentalDays} days
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Continue Button */}
+                            <Button
+                              onClick={() => {
+                                bookingStorage.setCar(car);
+                                bookingStorage.updateStep("step1", {
+                                  ...bookingStorage.getStep("step1"),
+                                  protectionPlan: plan.id,
+                                });
+                                router.push("/booking/step1");
+                              }}
+                              className="m-4 bg-blue-700 hover:bg-blue-800 text-white font-medium py-3 rounded"
+                            >
+                              CONTINUE
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

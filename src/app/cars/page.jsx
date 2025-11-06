@@ -13,7 +13,7 @@ export default function CarsPage() {
     <Layout>
       <main className="min-h-screen bg-gray-50">
         <CarsHeroSection />
-        <PricingPlans />
+        {/* <PricingPlans /> */}
         <CarsCardSection />
       </main>
     </Layout>

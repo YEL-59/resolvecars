@@ -16,7 +16,7 @@ import { CarIcon, CheckIcon, CreditCardIcon, UserIcon, ShieldCheck } from "lucid
 // removed: import BookingStepper from "./BookingStepper";
 
 // Combined schema for all steps; each page will validate only its relevant slice
-  const schema = z.object({
+const schema = z.object({
   // step 1
   pickupDate: z.string().optional(),
   dropoffDate: z.string().optional(),
@@ -159,7 +159,7 @@ export default function BookingRoot() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="container mx-auto grid grid-cols-1 lg:grid-cols-1 gap-8">
       <div className="lg:col-span-2 ">
         <div className=" p-0 shadow-lg ">
           <div className="bg-white  ">
@@ -205,9 +205,9 @@ export default function BookingRoot() {
         </div>
       </div>
 
-      <div className="lg:col-span-1">
+      {/* <div className="lg:col-span-1">
         <BookingSummary selectedCar={selectedCar} form={form} />
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export default function BookingSummary({ selectedCar, form }) {
     const days = computeDays();
     const dailyRate = parseInt(selectedCar?.price || 0) || 0;
     const planPrices = { basic: 0, standard: 19, premium: 39 };
-    
+
     // Extras pricing - some per day, some per booking
     const extrasPerDayPrices = {
       gps: 5,
@@ -36,13 +36,13 @@ export default function BookingSummary({ selectedCar, form }) {
       wifi: 7,
       roadside: 8,
     };
-    
+
     const extrasPerBookingPrices = {
       youngDriver: 25,
     };
-    
+
     const protection = planPrices[step1.protectionPlan || "basic"] || 0;
-    
+
     // Calculate extras: per-day extras multiplied by days, per-booking extras added once
     const extrasPerDay = (step1.extras || []).reduce(
       (s, id) => s + (extrasPerDayPrices[id] || 0),
@@ -52,7 +52,7 @@ export default function BookingSummary({ selectedCar, form }) {
       (s, id) => s + (extrasPerBookingPrices[id] || 0),
       0
     );
-    
+
     const totalExtras = (extrasPerDay * days) + extrasPerBooking;
     const taxRate = 0.08;
     const subtotal = (dailyRate + protection) * days + totalExtras;
@@ -156,7 +156,7 @@ export default function BookingSummary({ selectedCar, form }) {
               youngDriver: "Young Driver Fee"
             };
             const selectedExtras = step1.extras || [];
-            
+
             if (selectedExtras.length > 0 && totalExtras > 0) {
               return (
                 <>
