@@ -436,7 +436,7 @@ const HeroSections = () => {
           </div>
 
           {/* Search Form */}
-          <div className="bg-[#3B82F6]p-4 sm:p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
+          <div className="bg-[#3B82F6] p-4 sm:p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
             <div className="space-y-4 sm:space-y-6">
               {/* Location Fields */}
               <div className={cn(
