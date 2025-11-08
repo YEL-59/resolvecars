@@ -215,9 +215,11 @@ const CarsHeroSection = () => {
   useEffect(() => {
     if (!mounted) return;
 
-    if (pickupDate || returnDate) {
-      const startDate = pickupDate ? startOfDay(pickupDate) : undefined;
-      const endDate = returnDate ? startOfDay(returnDate) : undefined;
+    // Only sync if both dates are set (user has completed selection)
+    // This ensures calendar only shows selected dates when user has actually selected them
+    if (pickupDate && returnDate) {
+      const startDate = startOfDay(pickupDate);
+      const endDate = startOfDay(returnDate);
 
       // Only update if dates actually changed
       const currentStart = dateRange[0]?.startDate;
@@ -231,8 +233,20 @@ const CarsHeroSection = () => {
       ) {
         setDateRange([
           {
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
+            startDate: startDate,
+            endDate: endDate,
+            key: "selection",
+          },
+        ]);
+      }
+    } else {
+      // Reset dateRange when dates are not both set (no selection or partial selection)
+      // This ensures calendar shows no pre-selected dates
+      if (dateRange[0]?.startDate || dateRange[0]?.endDate) {
+        setDateRange([
+          {
+            startDate: undefined,
+            endDate: undefined,
             key: "selection",
           },
         ]);
@@ -255,20 +269,31 @@ const CarsHeroSection = () => {
   // Handle date range selection with drag support
   const handleDateRangeSelect = (item) => {
     const selection = item.selection;
-    setDateRange([selection]);
+    
+    // Only update if user actually selected dates (not just hovering)
+    if (selection.startDate || selection.endDate) {
+      setDateRange([selection]);
 
-    // Update individual dates
-    if (selection.startDate) {
-      setPickupDate(selection.startDate);
-    }
-    if (selection.endDate) {
-      setReturnDate(selection.endDate);
-      // Close calendar when both dates are selected (with a small delay for smooth UX)
-      if (selection.startDate && selection.endDate) {
-        setTimeout(() => {
-          setCalendarOpen(false);
-          setActiveTrigger(null);
-        }, 300);
+      // Update individual dates only when user makes a selection
+      if (selection.startDate) {
+        setPickupDate(selection.startDate);
+      } else {
+        // Clear pickup date if startDate is cleared
+        setPickupDate(undefined);
+      }
+      
+      if (selection.endDate) {
+        setReturnDate(selection.endDate);
+        // Close calendar when both dates are selected (with a small delay for smooth UX)
+        if (selection.startDate && selection.endDate) {
+          setTimeout(() => {
+            setCalendarOpen(false);
+            setActiveTrigger(null);
+          }, 300);
+        }
+      } else {
+        // Clear return date if endDate is cleared
+        setReturnDate(undefined);
       }
     }
   };
@@ -330,14 +355,75 @@ const CarsHeroSection = () => {
     style.textContent = `
       .rdrDateRangePickerWrapper {
         font-family: inherit !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
       .rdrDateRangeWrapper {
         border-radius: 0.5rem;
         overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
       }
       .rdrCalendarWrapper {
         background: white;
         border-radius: 0.5rem;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      /* Hide preset ranges (Today, Yesterday, This Week, etc.) */
+      .rdrStaticRange {
+        display: none !important;
+      }
+      .rdrStaticRangeLabel {
+        display: none !important;
+      }
+      .rdrStaticRanges {
+        display: none !important;
+      }
+      .rdrDateRangeWrapper .rdrStaticRanges {
+        display: none !important;
+      }
+      /* Remove white space and padding */
+      .rdrDateRangePickerWrapper > div {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .rdrDateRangeWrapper > div {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .rdrDefinedRangesWrapper {
+        display: none !important;
+      }
+      .rdrDateDisplayWrapper {
+        display: none !important;
+      }
+      .rdrDateDisplay {
+        display: none !important;
+      }
+      .rdrDateDisplayItem {
+        display: none !important;
+      }
+      /* Remove all padding and margins from calendar elements */
+      .rdrMonth {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .rdrMonthAndYearWrapper {
+        padding: 0.5rem 0 !important;
+        margin: 0 !important;
+      }
+      .rdrMonths {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .rdrWeekDays {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .rdrDays {
+        padding: 0 !important;
+        margin: 0 !important;
       }
       .rdrDayStartOfMonth .rdrDayNumber span,
       .rdrDayEndOfMonth .rdrDayNumber span {
@@ -450,6 +536,14 @@ const CarsHeroSection = () => {
                         onClick={() => {
                           setActiveTrigger("pickup");
                           setCalendarOpen(true);
+                          // Reset dateRange if no dates are selected when opening calendar
+                          if (!pickupDate && !returnDate) {
+                            setDateRange([{
+                              startDate: undefined,
+                              endDate: undefined,
+                              key: "selection",
+                            }]);
+                          }
                         }}
                         className={cn(
                           "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
@@ -489,7 +583,11 @@ const CarsHeroSection = () => {
                   <div className="overflow-x-auto">
                     {mounted && (
                       <DateRangePicker
-                        ranges={dateRange}
+                        ranges={pickupDate && returnDate ? dateRange : [{
+                          startDate: undefined,
+                          endDate: undefined,
+                          key: "selection",
+                        }]}
                         onChange={handleDateRangeSelect}
                         showSelectionPreview={true}
                         moveRangeOnFirstSelection={false}
@@ -498,6 +596,8 @@ const CarsHeroSection = () => {
                         minDate={new Date()}
                         rangeColors={["rgb(37 99 235)"]}
                         showDateDisplay={false}
+                        staticRanges={[]}
+                        inputRanges={[]}
                       />
                     )}
                   </div>
@@ -522,6 +622,14 @@ const CarsHeroSection = () => {
                         onClick={() => {
                           setActiveTrigger("return");
                           setCalendarOpen(true);
+                          // Reset dateRange if no dates are selected when opening calendar
+                          if (!pickupDate && !returnDate) {
+                            setDateRange([{
+                              startDate: undefined,
+                              endDate: undefined,
+                              key: "selection",
+                            }]);
+                          }
                         }}
                         className={cn(
                           "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
@@ -561,7 +669,11 @@ const CarsHeroSection = () => {
                   <div className="overflow-x-auto">
                     {mounted && (
                       <DateRangePicker
-                        ranges={dateRange}
+                        ranges={pickupDate && returnDate ? dateRange : [{
+                          startDate: undefined,
+                          endDate: undefined,
+                          key: "selection",
+                        }]}
                         onChange={handleDateRangeSelect}
                         showSelectionPreview={true}
                         moveRangeOnFirstSelection={false}
@@ -570,6 +682,8 @@ const CarsHeroSection = () => {
                         minDate={new Date()}
                         rangeColors={["rgb(37 99 235)"]}
                         showDateDisplay={false}
+                        staticRanges={[]}
+                        inputRanges={[]}
                       />
                     )}
                   </div>

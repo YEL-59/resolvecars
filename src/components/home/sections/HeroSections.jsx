@@ -25,9 +25,8 @@ import { format, differenceInDays, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { bookingStorage } from "@/lib/bookingStorage";
-import { DateRangePicker } from "react-date-range";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 // Fake location data
 const LOCATIONS = [
@@ -47,6 +46,60 @@ const LOCATIONS = [
   { id: 14, name: "Tokyo Narita (NRT)", address: "Tokyo, Japan" },
   { id: 15, name: "Sydney Airport (SYD)", address: "Sydney, Australia" },
 ];
+
+// Time Selector Component
+const TimeSelector = ({ value, onChange, label }) => {
+  const [open, setOpen] = useState(false);
+  const timeOptions = [];
+  
+  // Generate time options from 00:00 to 23:30 in 30-minute intervals
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      timeOptions.push(timeString);
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      {label && <label className="text-xs text-gray-100 block">{label}</label>}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
+              !value && "text-gray-400"
+            )}
+          >
+            <Clock className="mr-2 h-5 w-5 text-gray-400" />
+            <span className="text-sm">{value || "HH:MM"}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 z-50" align="start" sideOffset={8}>
+          <div className="timer-options max-h-[300px] overflow-y-auto p-2">
+            {timeOptions.map((time) => (
+              <div
+                key={time}
+                className={cn(
+                  "timer-option px-4 py-2 cursor-pointer hover:bg-blue-50 rounded transition-colors",
+                  value === time && "selected bg-blue-100 text-blue-700 font-semibold"
+                )}
+                data-value={time}
+                onClick={() => {
+                  onChange(time);
+                  setOpen(false);
+                }}
+              >
+                {time}
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
 
 // Searchable Location Input Component
 const SearchableLocationInput = ({
@@ -179,15 +232,8 @@ const SearchableLocationInput = ({
 
 const HeroSections = () => {
   const router = useRouter();
-  const [pickupDate, setPickupDate] = useState();
-  const [returnDate, setReturnDate] = useState();
-  const [dateRange, setDateRange] = useState([
-    {
-      startDate: undefined,
-      endDate: undefined,
-      key: "selection",
-    },
-  ]);
+  const [pickupDate, setPickupDate] = useState(null);
+  const [returnDate, setReturnDate] = useState(null);
   const [pickupTime, setPickupTime] = useState("13:00");
   const [returnTime, setReturnTime] = useState("13:30");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -199,69 +245,40 @@ const HeroSections = () => {
   const [sameStore, setSameStore] = useState(true);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
-  const pickupTimeRef = useRef(null);
-  const returnTimeRef = useRef(null);
 
-  // Sync dateRange with pickupDate and returnDate (only when dates change externally)
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (pickupDate || returnDate) {
-      const startDate = pickupDate ? startOfDay(pickupDate) : undefined;
-      const endDate = returnDate ? startOfDay(returnDate) : undefined;
-
-      // Only update if dates actually changed
-      const currentStart = dateRange[0]?.startDate;
-      const currentEnd = dateRange[0]?.endDate;
-
-      if (
-        (startDate && (!currentStart || currentStart.getTime() !== startDate.getTime())) ||
-        (!startDate && currentStart) ||
-        (endDate && (!currentEnd || currentEnd.getTime() !== endDate.getTime())) ||
-        (!endDate && currentEnd)
-      ) {
-        setDateRange([
-          {
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
-            key: "selection",
-          },
-        ]);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickupDate, returnDate, mounted]);
-
-  // Calculate period in days (including both start and end days)
-  const periodDays = pickupDate && returnDate
-    ? Math.max(1, differenceInDays(returnDate, pickupDate) + 1)
+  // Calculate period in days
+  // Base calculation: difference in days between pickup and return dates
+  // If return time is 30+ minutes later than pickup time, add an extra day
+  const periodDays = pickupDate && returnDate && pickupTime && returnTime
+    ? (() => {
+        // Calculate base days difference (without +1)
+        const baseDays = differenceInDays(returnDate, pickupDate);
+        
+        // Parse times to compare
+        const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
+        const [returnHour, returnMin] = returnTime.split(":").map(Number);
+        
+        // Convert to total minutes for comparison
+        const pickupTotalMinutes = pickupHour * 60 + pickupMin;
+        const returnTotalMinutes = returnHour * 60 + returnMin;
+        
+        // If return time is 30+ minutes later than pickup time, add 1 day
+        let days = baseDays;
+        if (returnTotalMinutes >= pickupTotalMinutes + 30) {
+          days = baseDays + 1;
+        }
+        
+        // Ensure minimum of 1 day
+        return Math.max(1, days);
+      })()
+    : pickupDate && returnDate
+    ? Math.max(1, differenceInDays(returnDate, pickupDate))
     : 0;
 
   // Format date as DD/MM/YYYY
   const formatDate = (date) => {
     if (!date) return "";
     return format(date, "dd/MM/yyyy");
-  };
-
-  // Handle date range selection with drag support
-  const handleDateRangeSelect = (item) => {
-    const selection = item.selection;
-    setDateRange([selection]);
-
-    // Update individual dates
-    if (selection.startDate) {
-      setPickupDate(selection.startDate);
-    }
-    if (selection.endDate) {
-      setReturnDate(selection.endDate);
-      // Close calendar when both dates are selected (with a small delay for smooth UX)
-      if (selection.startDate && selection.endDate) {
-        setTimeout(() => {
-          setCalendarOpen(false);
-          setActiveTrigger(null);
-        }, 300);
-      }
-    }
   };
 
   const handleSearch = () => {
@@ -315,59 +332,52 @@ const HeroSections = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Add smooth styles for react-date-range calendar
+  // Add custom styles for react-datepicker
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      .rdrDateRangePickerWrapper {
+      .react-datepicker {
         font-family: inherit !important;
+        border: none !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
       }
-      .rdrDateRangeWrapper {
-        border-radius: 0.5rem;
-        overflow: hidden;
+      .react-datepicker__header {
+        background-color: white !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+        padding-top: 0.75rem !important;
       }
-      .rdrCalendarWrapper {
-        background: white;
-        border-radius: 0.5rem;
+      .react-datepicker__month-container {
+        padding: 0 !important;
       }
-      .rdrDayStartOfMonth .rdrDayNumber span,
-      .rdrDayEndOfMonth .rdrDayNumber span {
-        color: inherit !important;
-      }
-      .rdrDayInRange {
-        background-color: rgb(191 219 254) !important;
-        color: rgb(30 58 138) !important;
-        transition: all 0.2s ease-in-out !important;
-      }
-      .rdrDayInRange:hover {
-        background-color: rgb(147 197 253) !important;
-      }
-      .rdrDayStartOfRange,
-      .rdrDayEndOfRange {
+      .react-datepicker__day--selected,
+      .react-datepicker__day--in-selecting-range,
+      .react-datepicker__day--in-range {
         background-color: rgb(37 99 235) !important;
         color: white !important;
         border-radius: 0.375rem !important;
-        transition: all 0.2s ease-in-out !important;
       }
-      .rdrDayStartOfRange:hover,
-      .rdrDayEndOfRange:hover {
-        background-color: rgb(29 78 216) !important;
+      .react-datepicker__day--in-selecting-range:not(.react-datepicker__day--in-range) {
+        background-color: rgb(191 219 254) !important;
+        color: rgb(30 58 138) !important;
       }
-      .rdrDay:not(.rdrDayPassive):hover .rdrDayNumber span {
-        background-color: rgb(219 234 254) !important;
-        transition: background-color 0.15s ease-in-out !important;
-      }
-      .rdrDayNumber {
-        cursor: pointer !important;
-        transition: all 0.2s ease-in-out !important;
-        user-select: none !important;
-      }
-      .rdrDayNumber:active {
-        transform: scale(0.95);
-      }
-      .rdrDaySelected .rdrDayNumber span {
+      .react-datepicker__day--range-start,
+      .react-datepicker__day--range-end {
         background-color: rgb(37 99 235) !important;
         color: white !important;
+      }
+      .react-datepicker__day:hover {
+        background-color: rgb(219 234 254) !important;
+        border-radius: 0.375rem !important;
+      }
+      .react-datepicker__day--keyboard-selected {
+        background-color: rgb(219 234 254) !important;
+        color: inherit !important;
+      }
+      .react-datepicker__day--disabled {
+        color: #d1d5db !important;
+        cursor: not-allowed !important;
       }
     `;
     document.head.appendChild(style);
@@ -426,7 +436,7 @@ const HeroSections = () => {
           </div>
 
           {/* Search Form */}
-          <div className="bg-[#3B82F6] p-4 sm:p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
+          <div className="bg-[#3B82F6]p-4 sm:p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
             <div className="space-y-4 sm:space-y-6">
               {/* Location Fields */}
               <div className={cn(
@@ -494,19 +504,11 @@ const HeroSections = () => {
                       </div>
 
                       {/* Pick-up Time */}
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-100 block">Time</label>
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
-                          <Input
-                            type="time"
-                            value={pickupTime}
-                            onChange={(e) => setPickupTime(e.target.value)}
-                            ref={pickupTimeRef}
-                            className="pl-10 h-12 bg-white border-0 text-gray-900"
-                          />
-                        </div>
-                      </div>
+                      <TimeSelector
+                        value={pickupTime}
+                        onChange={setPickupTime}
+                        label="Time"
+                      />
                     </div>
                     <PopoverContent
                       className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none"
@@ -515,18 +517,23 @@ const HeroSections = () => {
                       side="bottom"
                       onOpenAutoFocus={(e) => e.preventDefault()}
                     >
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto p-0 m-0">
                         {mounted && (
-                          <DateRangePicker
-                            ranges={dateRange}
-                            onChange={handleDateRangeSelect}
-                            showSelectionPreview={true}
-                            moveRangeOnFirstSelection={false}
-                            months={isMobile ? 1 : 2}
-                            direction="horizontal"
+                          <DatePicker
+                            selected={pickupDate}
+                            onChange={(date) => {
+                              setPickupDate(date);
+                              if (date && returnDate && date > returnDate) {
+                                setReturnDate(null);
+                              }
+                            }}
+                            selectsStart
+                            startDate={pickupDate}
+                            endDate={returnDate}
                             minDate={new Date()}
-                            rangeColors={["rgb(37 99 235)"]}
-                            showDateDisplay={false}
+                            monthsShown={isMobile ? 1 : 2}
+                            inline
+                            calendarClassName="!border-0"
                           />
                         )}
                       </div>
@@ -566,19 +573,11 @@ const HeroSections = () => {
                       </div>
 
                       {/* Return Time */}
-                      <div className="space-y-1">
-                        <label className="text-xs text-gray-100 block">Time</label>
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
-                          <Input
-                            type="time"
-                            value={returnTime}
-                            onChange={(e) => setReturnTime(e.target.value)}
-                            ref={returnTimeRef}
-                            className="pl-10 h-12 bg-white border-0 text-gray-900"
-                          />
-                        </div>
-                      </div>
+                      <TimeSelector
+                        value={returnTime}
+                        onChange={setReturnTime}
+                        label="Time"
+                      />
                     </div>
                     <PopoverContent
                       className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none"
@@ -587,18 +586,23 @@ const HeroSections = () => {
                       side="bottom"
                       onOpenAutoFocus={(e) => e.preventDefault()}
                     >
-                      <div className="overflow-x-auto">
+                      <div className="p-0 m-0">
                         {mounted && (
-                          <DateRangePicker
-                            ranges={dateRange}
-                            onChange={handleDateRangeSelect}
-                            showSelectionPreview={true}
-                            moveRangeOnFirstSelection={false}
-                            months={isMobile ? 1 : 2}
-                            direction="horizontal"
-                            minDate={new Date()}
-                            rangeColors={["rgb(37 99 235)"]}
-                            showDateDisplay={false}
+                          <DatePicker
+                            selected={returnDate}
+                            onChange={(date) => {
+                              setReturnDate(date);
+                              if (date && pickupDate && date < pickupDate) {
+                                setPickupDate(null);
+                              }
+                            }}
+                            selectsEnd
+                            startDate={pickupDate}
+                            endDate={returnDate}
+                            minDate={pickupDate || new Date()}
+                            monthsShown={isMobile ? 1 : 2}
+                            inline
+                            calendarClassName="!border-0"
                           />
                         )}
                       </div>
