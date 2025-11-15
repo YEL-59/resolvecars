@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -38,7 +38,8 @@ import {
 } from "lucide-react";
 import { useSignIn, useSignUp } from "@/hooks/auth.hook";
 
-const SignInPage = () => {
+// Component that uses useSearchParams
+const SignInPageContent = () => {
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -568,6 +569,22 @@ const SignInPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Main page component with Suspense boundary
+const SignInPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignInPageContent />
+    </Suspense>
   );
 };
 
