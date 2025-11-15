@@ -1,9 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Phone, Mail, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,46 +18,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-
-const formSchema = z.object({
-  firstName: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
-  }),
-  lastName: z.string().min(2, {
-    message: "Last name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  phone: z.string().min(10, {
-    message: "Please enter a valid phone number.",
-  }),
-  subject: z.string().min(5, {
-    message: "Subject must be at least 5 characters.",
-  }),
-  message: z.string().min(10, {
-    message: "Message must be at least 10 characters.",
-  }),
-});
+import { useContact } from "@/hooks/contact.hook";
 
 const ContactUs = () => {
   const [openFaq, setOpenFaq] = useState(null);
-
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      subject: "",
-      message: "",
-    },
-  });
+  const { form, mutate, isPending } = useContact();
 
   function onSubmit(values) {
-    console.log(values);
-    // Handle form submission here
+    mutate(values);
   }
 
   const faqData = [
@@ -116,7 +81,7 @@ const ContactUs = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="first_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>First Name</FormLabel>
@@ -132,7 +97,7 @@ const ContactUs = () => {
                   />
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="last_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Last Name</FormLabel>
@@ -167,13 +132,14 @@ const ContactUs = () => {
 
                 <FormField
                   control={form.control}
-                  name="phone"
+                  name="phone_number"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter your phone number"
+                          type="tel"
+                          placeholder="Enter your phone number (e.g., +1234567890)"
                           {...field}
                         />
                       </FormControl>
@@ -201,7 +167,7 @@ const ContactUs = () => {
 
                 <FormField
                   control={form.control}
-                  name="message"
+                  name="message_text"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Message</FormLabel>
@@ -220,8 +186,9 @@ const ContactUs = () => {
                 <Button
                   type="submit"
                   className="w-full bg-red-600 hover:bg-red-700"
+                  disabled={isPending}
                 >
-                  Send Message
+                  {isPending ? "Sending..." : "Send Message"}
                 </Button>
               </form>
             </Form>

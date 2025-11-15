@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
@@ -16,20 +17,63 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Phone, User, LogOut, Settings, Car, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { userStorage } from "@/lib/userStorage";
+import { useSignOut } from "@/hooks/auth.hook";
 
 export default function Navbar() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // toggle manually true/false
-  const [user] = useState({
-    name: "John Smith",
-    email: "john@example.com",
-    avatar: "/assets/user.jpg",
-  });
+  const [user, setUser] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { mutate: signOut } = useSignOut();
 
   // Prevent hydration errors by only rendering Radix UI components after mount
   useEffect(() => {
     setMounted(true);
+    // Load user data from localStorage
+    const userData = userStorage.getUser();
+    const token = userStorage.getToken();
+    if (userData && token) {
+      setUser(userData);
+      setIsLoggedIn(true);
+    }
   }, []);
+
+  // Listen for storage changes (when user logs in from another tab)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const userData = userStorage.getUser();
+      const token = userStorage.getToken();
+      if (userData && token) {
+        setUser(userData);
+        setIsLoggedIn(true);
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    // Also listen for custom event for same-tab updates
+    window.addEventListener("userLogin", handleStorageChange);
+    window.addEventListener("userLogout", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userLogin", handleStorageChange);
+      window.removeEventListener("userLogout", handleStorageChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    signOut();
+    setUser(null);
+    setIsLoggedIn(false);
+  };
+
+  const userName = user ? userStorage.getUserName() : "";
+  const userInitials = user ? userStorage.getUserInitials() : "";
+  const userEmail = user?.email || "";
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -61,15 +105,13 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative transition-all duration-200 group ${
-                  isActive ? "text-[#F5807C] font-semibold" : "text-black"
-                }`}
+                className={`relative transition-all duration-200 group ${isActive ? "text-[#F5807C] font-semibold" : "text-black"
+                  }`}
               >
                 <span>{link.label}</span>
                 <span
-                  className={`absolute left-0 -bottom-1 h-[2px] bg-[#F5807C] transition-all duration-300 ${
-                    isActive ? "w-full" : "w-0 group-hover:w-full"
-                  }`}
+                  className={`absolute left-0 -bottom-1 h-[2px] bg-[#F5807C] transition-all duration-300 ${isActive ? "w-full" : "w-0 group-hover:w-full"
+                    }`}
                 ></span>
               </Link>
             );
@@ -85,30 +127,26 @@ export default function Navbar() {
           </div>
 
           {/* Auth Section */}
-          {mounted && isLoggedIn ? (
+          {mounted && isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.avatar} alt={user.name} />
                     <AvatarFallback>
-                      {user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+                      {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden md:inline text-sm font-medium text-gray-800">
-                    {user.name}
+                    {userName}
                   </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user.name}</p>
+                    <p className="text-sm font-medium">{userName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {user.email}
+                      {userEmail}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -127,7 +165,7 @@ export default function Navbar() {
                   <Settings className="mr-2 h-4 w-4" /> Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsLoggedIn(false)}>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" /> Log Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -136,17 +174,8 @@ export default function Navbar() {
             // Fallback during SSR to prevent hydration mismatch
             <div className="flex items-center gap-2">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
+                <AvatarFallback>U</AvatarFallback>
               </Avatar>
-              <span className="hidden md:inline text-sm font-medium text-gray-800">
-                {user.name}
-              </span>
             </div>
           ) : (
             <div className="hidden md:flex items-center space-x-3">
@@ -168,53 +197,49 @@ export default function Navbar() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="relative w-20 h-10">
-                    <Image
-                      src="/assets/logo.png"
-                      alt="ResolveCars Logo"
-                      fill
-                      className="h-full w-full object-contain"
-                    />
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="relative w-20 h-10">
+                      <Image
+                        src="/assets/logo.png"
+                        alt="ResolveCars Logo"
+                        fill
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-col gap-4">
-                  {navLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className="text-base text-gray-800">
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-                <div className="mt-6">
-                  {isLoggedIn ? (
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback>
-                          {user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <div className="flex flex-col gap-4">
+                    {navLinks.map((link) => (
+                      <Link key={link.href} href={link.href} className="text-base text-gray-800">
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="mt-6">
+                    {isLoggedIn && user ? (
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>
+                            {userInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{userName}</p>
+                          <p className="text-xs text-muted-foreground">{userEmail}</p>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 mt-2">
-                      <Button variant="ghost" asChild>
-                        <Link href="/auth/signin">Sign In</Link>
-                      </Button>
-                      <Button asChild>
-                        <Link href="/auth/signup">Sign Up</Link>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+                    ) : (
+                      <div className="flex items-center gap-3 mt-2">
+                        <Button variant="ghost" asChild>
+                          <Link href="/auth/signin">Sign In</Link>
+                        </Button>
+                        <Button asChild>
+                          <Link href="/auth/signup">Sign Up</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
             ) : (
               // Fallback during SSR to prevent hydration mismatch
               <Button variant="ghost" size="icon" aria-label="Open menu" disabled>
