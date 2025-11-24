@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Star, Grid3X3, List, Plane, Users, Car as CarIcon, Info, Check, Loader2 } from "lucide-react";
+import { Star, Grid3X3, List, Plane, Users, Car as CarIcon, Info, Check, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCars, useSearchCars } from "@/hooks/cars.hook";
@@ -83,6 +83,213 @@ const sortOptions = [
   "Rating",
 ];
 
+// Helper function to get car_prices from car object (check multiple locations)
+const getCarPrices = (car) => {
+  // Check direct model.car_prices
+  if (car?.model?.car_prices && Array.isArray(car.model.car_prices)) {
+    return car.model.car_prices;
+  }
+  // Check _apiData.model.car_prices (from transformed data)
+  if (car?._apiData?.model?.car_prices && Array.isArray(car._apiData.model.car_prices)) {
+    return car._apiData.model.car_prices;
+  }
+  return null;
+};
+
+// Helper function to get dynamic car price based on selected dates
+const getCarPriceForDate = (car, selectedDate) => {
+  const carPrices = getCarPrices(car);
+  if (!carPrices || !selectedDate) {
+    return null;
+  }
+
+  // Parse date string (YYYY-MM-DD) as local date
+  const parseLocalDate = (dateString) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+
+  const selected = parseLocalDate(selectedDate);
+
+  // Find the price range that matches the selected date
+  const matchingPrice = carPrices.find((priceRange) => {
+    if (!priceRange.is_active) return false;
+
+    const startDate = parseLocalDate(priceRange.start_date);
+    const endDate = parseLocalDate(priceRange.end_date);
+    endDate.setHours(23, 59, 59, 999);
+
+    return selected >= startDate && selected <= endDate;
+  });
+
+  return matchingPrice || null;
+};
+
+// Helper function to get car price for current date (today) - uses user's local time
+const getCarPriceForCurrentDate = (car) => {
+  const today = new Date();
+  // Get local date string in YYYY-MM-DD format
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const localDateString = `${year}-${month}-${day}`;
+  return getCarPriceForDate(car, localDateString);
+};
+
+// Helper function to get average car price for date range
+const getCarPriceForDateRange = (car, pickupDate, returnDate) => {
+  const carPrices = getCarPrices(car);
+  if (!carPrices || !pickupDate || !returnDate) {
+    return null;
+  }
+
+  // Parse date string (YYYY-MM-DD) as local date
+  const parseLocalDate = (dateString) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+
+  const pickup = parseLocalDate(pickupDate);
+  const returnD = parseLocalDate(returnDate);
+  returnD.setHours(23, 59, 59, 999);
+
+  // Get all active price ranges
+  const activePrices = carPrices.filter(p => p.is_active);
+
+  if (activePrices.length === 0) return null;
+
+  // Find prices that overlap with the rental period
+  const matchingPrices = activePrices.filter((priceRange) => {
+    const startDate = parseLocalDate(priceRange.start_date);
+    const endDate = parseLocalDate(priceRange.end_date);
+    endDate.setHours(23, 59, 59, 999);
+
+    // Check if price range overlaps with rental period
+    return (pickup <= endDate && returnD >= startDate);
+  });
+
+  if (matchingPrices.length === 0) {
+    // If no exact match, use the price for pickup date
+    return getCarPriceForDate(car, pickupDate);
+  }
+
+  // If multiple price ranges, calculate weighted average based on days
+  if (matchingPrices.length === 1) {
+    return matchingPrices[0];
+  }
+
+  // For multiple ranges, use the price for the pickup date (primary date)
+  return getCarPriceForDate(car, pickupDate) || matchingPrices[0];
+};
+
+// Helper function to check if car is unavailable
+const isCarUnavailable = (car, pickupDate = null, returnDate = null) => {
+  // First check the car's status field - if status is not "available", car is unavailable
+  const carStatus = car.status || car._apiData?.status;
+  if (carStatus && carStatus.toLowerCase() !== "available") {
+    return true;
+  }
+
+  // Parse date string (YYYY-MM-DD) as local date
+  const parseLocalDate = (dateString) => {
+    if (!dateString) return null;
+    try {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    } catch {
+      return null;
+    }
+  };
+
+  const availableDate = car.available_date || car._apiData?.available_date;
+  const availableStartDate = car.available_start_date || car._apiData?.available_start_date;
+  const availableEndDate = car.available_end_date || car._apiData?.available_end_date;
+
+  // If we have pickup and return dates, check if they fall within the available range
+  if (pickupDate && returnDate) {
+    const selectedPickup = parseLocalDate(pickupDate);
+    const selectedReturn = parseLocalDate(returnDate);
+
+    if (selectedPickup && selectedReturn) {
+      // If available_start_date and available_end_date are both null, car is available
+      // (no date restrictions)
+      if ((availableStartDate === null || availableStartDate === undefined) &&
+        (availableEndDate === null || availableEndDate === undefined)) {
+        // Check legacy available_date field
+        if (availableDate !== null && availableDate !== undefined) {
+          const available = parseLocalDate(availableDate);
+          // If available_date is in the past relative to pickup, car is unavailable
+          if (available && selectedPickup < available) {
+            return true;
+          }
+        }
+        return false; // No date restrictions, car is available
+      }
+
+      // Check if selected dates fall within available range
+      const startDate = parseLocalDate(availableStartDate);
+      const endDate = parseLocalDate(availableEndDate);
+
+      // If we have a start date and pickup is before it, car is unavailable
+      if (startDate && selectedPickup < startDate) {
+        return true;
+      }
+
+      // If we have an end date and return is after it, car is unavailable
+      if (endDate && selectedReturn > endDate) {
+        return true;
+      }
+
+      // Selected dates are within the available range (or no end date means available indefinitely)
+      return false;
+    }
+  }
+
+  // If no pickup/return dates provided, check against today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // If available_date is null AND both start/end dates are null, car is available
+  // (no restrictions means available)
+  if ((availableDate === null || availableDate === undefined) &&
+    (availableStartDate === null || availableStartDate === undefined) &&
+    (availableEndDate === null || availableEndDate === undefined)) {
+    return false; // No restrictions, car is available
+  }
+
+  // Check available_date (legacy field) - if it's in the past, car is unavailable
+  if (availableDate !== null && availableDate !== undefined) {
+    const available = parseLocalDate(availableDate);
+    if (available && available < today) {
+      return true; // available_date is in the past
+    }
+  }
+
+  // Check available_start_date and available_end_date (new fields)
+  const startDate = parseLocalDate(availableStartDate);
+  const endDate = parseLocalDate(availableEndDate);
+
+  // If we have a start date and today is before it, car is unavailable
+  if (startDate && today < startDate) {
+    return true;
+  }
+
+  // If we have an end date and today is after it, car is unavailable
+  if (endDate && today > endDate) {
+    return true;
+  }
+
+  // If we reach here, car is available
+  // (either no date restrictions, or today is within the available range)
+  return false;
+};
+
 // Helper function to transform API package to pricing plan format
 const transformPackageToPlan = (pkg, index) => {
   const packageType = pkg.package_type?.toLowerCase() || "standard";
@@ -116,7 +323,6 @@ export default function CarsCardSection() {
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [sortBy, setSortBy] = useState("Name (A-Z)");
-  const [visibleCars, setVisibleCars] = useState(10);
   const [viewMode, setViewMode] = useState("flex"); // Default to flex view
   const [rentalDays, setRentalDays] = useState(23);
 
@@ -127,6 +333,9 @@ export default function CarsCardSection() {
   const pickupTime = searchParams.get("pickup_time") || "12:00";
   const returnDate = searchParams.get("return_date");
   const returnTime = searchParams.get("return_time") || "12:00";
+
+  // Get current page from URL or default to 1
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   // Use search API if search parameters are present, otherwise use regular cars API
   const hasSearchParams = pickupLocationId && pickupDate && returnDate;
@@ -144,7 +353,7 @@ export default function CarsCardSection() {
       : { pickup_location_id: null, pickup_date: null, return_date: null }
   );
 
-  const regularCarsQuery = useCars({ per_page: 15 });
+  const regularCarsQuery = useCars({ per_page: 5, page: currentPage });
 
   // Use search results if available, otherwise use regular cars
   const { data, isLoading, isError, error } = hasSearchParams
@@ -233,7 +442,8 @@ export default function CarsCardSection() {
       }
     });
 
-  const displayedCars = filteredCars.slice(0, visibleCars);
+  const displayedCars = filteredCars;
+  const pagination = data?.pagination;
 
   return (
     <section className="py-12 px-4 md:px-8">
@@ -374,85 +584,134 @@ export default function CarsCardSection() {
             {viewMode === "grid" ? (
               // Grid View (existing card design)
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayedCars.map((car) => (
-                  <div
-                    key={car.id}
-                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="relative h-48">
-                      <Image
-                        src={car.image}
-                        alt={car.name}
-                        fill
-                        className="object-cover"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <span className="bg-primary text-white px-2 py-1 rounded text-sm">
-                          {car.category}
-                        </span>
+                {displayedCars.map((car) => {
+                  // Check if car is unavailable (pass pickup and return dates if available)
+                  const isUnavailable = isCarUnavailable(car, pickupDate, returnDate);
+
+                  // Get dynamic car price based on selected dates or current date
+                  const dynamicCarPrice = pickupDate && returnDate
+                    ? getCarPriceForDateRange(car, pickupDate, returnDate)
+                    : pickupDate
+                      ? getCarPriceForDate(car, pickupDate)
+                      : getCarPriceForCurrentDate(car); // Use current date if no search params
+
+                  // Use dynamic price if available, otherwise fallback to car.price
+                  const displayPrice = dynamicCarPrice
+                    ? dynamicCarPrice.price_per_day
+                    : car.price;
+
+                  const displayPriceFormatted = dynamicCarPrice
+                    ? dynamicCarPrice.display_price || `$${displayPrice.toFixed(2)}`
+                    : `$${car.price}`;
+
+                  return (
+                    <div
+                      key={car.id}
+                      className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${isUnavailable
+                        ? "opacity-50 grayscale cursor-not-allowed"
+                        : "hover:shadow-lg"
+                        }`}
+                    >
+                      <div className="relative h-48">
+                        <Image
+                          src={car.image || car.image_url}
+                          alt={car.name || `${car.model?.make} ${car.model?.model}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute top-4 left-4">
+                          <span className="bg-primary text-white px-2 py-1 rounded text-sm">
+                            {car.category || car.model?.car_type?.name}
+                          </span>
+                        </div>
+                        {isUnavailable && (
+                          <div className="absolute top-4 right-4">
+                            <span className="bg-gray-600 text-white px-3 py-1 rounded text-sm font-semibold">
+                              Unavailable
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="text-xl font-semibold">{car.name || `${car.model?.make} ${car.model?.model}`}</h3>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-primary">
+                              {displayPriceFormatted}
+                            </p>
+                            <p className="text-sm text-gray-500">per day</p>
+                            {dynamicCarPrice && dynamicCarPrice.start_date && dynamicCarPrice.end_date && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(dynamicCarPrice.start_date).toLocaleDateString()} - {new Date(dynamicCarPrice.end_date).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${i < Math.floor(car.rating || car.model?.average_rating || 0)
+                                  ? "text-yellow-400 fill-current"
+                                  : "text-gray-300"
+                                  }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            ({car.reviews || car.model?.review_count || 0} reviews)
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-500 mb-4">
+                          <div className="flex items-center gap-2">
+                            <span>Year:</span>
+                            <span className="font-medium">{car.year || car.model?.year || "N/A"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span>Transmission:</span>
+                            <span className="font-medium">{car.transmission || car.model?.transmission_type || "N/A"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span>Fuel:</span>
+                            <span className="font-medium">{car.fuel || car.model?.fuel_type || "N/A"}</span>
+                          </div>
+                        </div>
+
+                        <Button
+                          className="w-full"
+                          disabled={isUnavailable}
+                          onClick={() => {
+                            if (!isUnavailable) {
+                              bookingStorage.setCar(car);
+                              router.push(`/cars/${car.id}`);
+                            }
+                          }}
+                        >
+                          {isUnavailable ? "Unavailable" : "Book Now"}
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-semibold">{car.name}</h3>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-primary">
-                            ${car.price}
-                          </p>
-                          <p className="text-sm text-gray-500">per day</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-4 h-4 ${i < Math.floor(car.rating)
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300"
-                                }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          ({car.reviews} reviews)
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-sm text-gray-500 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span>Year:</span>
-                          <span className="font-medium">{car.year}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span>Transmission:</span>
-                          <span className="font-medium">{car.transmission}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span>Fuel:</span>
-                          <span className="font-medium">{car.fuel}</span>
-                        </div>
-                      </div>
-
-                      <Button
-                        className="w-full"
-                        onClick={() => {
-                          bookingStorage.setCar(car);
-                          router.push(`/cars/${car.id}`);
-                        }}
-                      >
-                        Book Now
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               // Flex View (horizontal card design matching image)
               <div className="space-y-6">
                 {displayedCars.map((car) => {
+                  // Check if car is unavailable (pass pickup and return dates if available)
+                  const isUnavailable = isCarUnavailable(car, pickupDate, returnDate);
+
+                  // Get dynamic car price based on selected dates or current date
+                  const dynamicCarPrice = pickupDate && returnDate
+                    ? getCarPriceForDateRange(car, pickupDate, returnDate)
+                    : pickupDate
+                      ? getCarPriceForDate(car, pickupDate)
+                      : getCarPriceForCurrentDate(car); // Use current date if no search params
+
                   // Get packages from API data or use default pricing plans
                   const carPackages = car.packages && car.packages.length > 0
                     ? car.packages
@@ -497,25 +756,52 @@ export default function CarsCardSection() {
                     });
 
                   // Get transmission display (M for manual, A for automatic)
-                  const transmissionDisplay = car.transmission === "manual" ? "M" : "A";
+                  const transmissionDisplay = (car.transmission || car.model?.transmission_type) === "manual" ? "M" : "A";
                   // Calculate doors (assuming 5 for sedans/SUVs, 3 for coupes)
                   const doors = car.type === "SPORTS" ? 3 : 5;
 
                   return (
                     <div
                       key={car.id}
-                      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                      className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${isUnavailable
+                        ? "opacity-50 grayscale cursor-not-allowed"
+                        : "hover:shadow-lg"
+                        }`}
                     >
                       <div className="flex flex-col lg:flex-row">
                         {/* Left Section - Car Details */}
-                        <div className="lg:w-1/3 p-4 lg:p-6 border-r-0 lg:border-r border-gray-200 border-b lg:border-b-0 pb-4 lg:pb-6">
+                        <div className="lg:w-1/3 p-4 lg:p-6 border-r-0 lg:border-r border-gray-200 border-b lg:border-b-0 pb-4 lg:pb-6 relative">
+                          {/* Unavailable Badge */}
+                          {isUnavailable && (
+                            <div className="absolute top-4 right-4 z-10">
+                              <span className="bg-gray-600 text-white px-3 py-1 rounded text-sm font-semibold">
+                                Unavailable
+                              </span>
+                            </div>
+                          )}
+
                           {/* Car Model Name */}
                           <h3 className="text-2xl font-bold text-blue-600 mb-2">
-                            {car.name} or similar
+                            {car.name || `${car.model?.make || ""} ${car.model?.model || ""}`.trim() || "Car"} or similar
                           </h3>
 
                           {/* Car Type */}
-                          <p className="text-sm text-gray-600 mb-4">{car.type}</p>
+                          <p className="text-sm text-gray-600 mb-2">{car.type || car.model?.car_type?.name || ""}</p>
+
+                          {/* Dynamic Car Price Display */}
+                          {dynamicCarPrice && dynamicCarPrice.start_date && dynamicCarPrice.end_date && (
+                            <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-600">Base Price:</span>
+                                <span className="text-lg font-bold text-blue-700">
+                                  {dynamicCarPrice.display_price || `$${dynamicCarPrice.price_per_day.toFixed(2)}`}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {new Date(dynamicCarPrice.start_date).toLocaleDateString()} - {new Date(dynamicCarPrice.end_date).toLocaleDateString()}
+                              </p>
+                            </div>
+                          )}
 
                           {/* Collection Info */}
                           <div className="flex items-center gap-2 mb-3">
@@ -535,8 +821,8 @@ export default function CarsCardSection() {
                           {/* Car Image */}
                           <div className="relative w-full h-48 mb-4 bg-gray-50 rounded-lg overflow-hidden">
                             <Image
-                              src={car.image}
-                              alt={car.name}
+                              src={car.image || car.image_url || "/assets/cars/ridecard1.png"}
+                              alt={car.name || `${car.model?.make} ${car.model?.model}` || "Car"}
                               fill
                               className="object-contain p-4"
                             />
@@ -546,7 +832,7 @@ export default function CarsCardSection() {
                           <div className="flex items-center gap-4 mb-3">
                             <div className="flex items-center gap-2">
                               <Users className="w-5 h-5 text-gray-600" />
-                              <span className="text-sm font-medium">{car.passengers}</span>
+                              <span className="text-sm font-medium">{car.passengers || car.model?.seats || 0}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <CarIcon className="w-5 h-5 text-gray-600" />
@@ -667,17 +953,23 @@ export default function CarsCardSection() {
 
                                 {/* Continue Button */}
                                 <Button
+                                  disabled={isUnavailable}
                                   onClick={() => {
-                                    bookingStorage.setCar(car);
-                                    bookingStorage.updateStep("step1", {
-                                      ...bookingStorage.getStep("step1"),
-                                      protectionPlan: plan.id,
-                                    });
-                                    router.push("/booking/step1");
+                                    if (!isUnavailable) {
+                                      bookingStorage.setCar(car);
+                                      bookingStorage.updateStep("step1", {
+                                        ...bookingStorage.getStep("step1"),
+                                        protectionPlan: plan.id,
+                                      });
+                                      router.push("/booking/step1");
+                                    }
                                   }}
-                                  className="m-4 bg-blue-700 hover:bg-blue-800 text-white font-medium py-3 rounded"
+                                  className={`m-4 font-medium py-3 rounded ${isUnavailable
+                                    ? "bg-gray-400 cursor-not-allowed text-white"
+                                    : "bg-blue-700 hover:bg-blue-800 text-white"
+                                    }`}
                                 >
-                                  CONTINUE
+                                  {isUnavailable ? "UNAVAILABLE" : "CONTINUE"}
                                 </Button>
                               </div>
                             ))}
@@ -690,16 +982,79 @@ export default function CarsCardSection() {
               </div>
             )}
 
-            {visibleCars < filteredCars.length && (
-              <div className="text-center mt-8">
+            {/* Pagination - Only show for regular cars listing (not search) */}
+            {!hasSearchParams && pagination && pagination.last_page > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
                 <Button
                   variant="outline"
-                  size="lg"
-                  onClick={() => setVisibleCars(filteredCars.length)}
-                  className="mx-auto"
+                  size="sm"
+                  onClick={() => {
+                    const newPage = currentPage - 1;
+                    if (newPage >= 1) {
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set("page", newPage.toString());
+                      router.push(`/cars?${params.toString()}`);
+                    }
+                  }}
+                  disabled={currentPage === 1 || !pagination.prev_page_url}
+                  className="flex items-center gap-1"
                 >
-                  View All Cars
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
                 </Button>
+
+                <div className="flex items-center gap-1">
+                  {pagination.links && pagination.links.map((link, index) => {
+                    // Skip Previous and Next links (they're handled by buttons)
+                    if (!link.url || link.label === "&laquo; Previous" || link.label === "Next &raquo;") {
+                      return null;
+                    }
+
+                    const pageNum = link.page;
+                    const isCurrentPage = link.active;
+
+                    return (
+                      <Button
+                        key={index}
+                        variant={isCurrentPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          const params = new URLSearchParams(searchParams.toString());
+                          params.set("page", pageNum.toString());
+                          router.push(`/cars?${params.toString()}`);
+                        }}
+                        className={isCurrentPage ? "bg-primary text-primary-foreground" : ""}
+                      >
+                        {link.label.replace(/[<>&;]/g, "")}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newPage = currentPage + 1;
+                    if (newPage <= pagination.last_page) {
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set("page", newPage.toString());
+                      router.push(`/cars?${params.toString()}`);
+                    }
+                  }}
+                  disabled={currentPage === pagination.last_page || !pagination.next_page_url}
+                  className="flex items-center gap-1"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Pagination Info - Only show for regular cars listing */}
+            {!hasSearchParams && pagination && (
+              <div className="text-center mt-4 text-sm text-gray-600">
+                Showing {pagination.from || 0} to {pagination.to || 0} of {pagination.total || 0} cars
               </div>
             )}
           </>

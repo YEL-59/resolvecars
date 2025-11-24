@@ -308,7 +308,7 @@ export const useGetUser = () => {
   return useQuery({
     queryKey: ["user"],
     queryFn: async () => {
-      const res = await axiosPrivate.get("/auth/me");
+      const res = await axiosPrivate.get("/user/me");
       return res.data;
     },
     enabled: typeof window !== "undefined" && !!localStorage.getItem("auth_token"),

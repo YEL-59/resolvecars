@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, ArrowRight, CreditCard, CheckCircle2 } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import Image from "next/image";
+import { extrasData } from "@/lib/coverageData";
+import { useAddons } from "@/hooks/addons.hook";
 
 const countries = [
     "Spain", "United States", "Canada", "United Kingdom", "Germany", "France",
@@ -18,6 +20,7 @@ const countries = [
 
 export default function Step3Payment({ onPrev, onNext }) {
     const form = useFormContext();
+    const { data: addonsData } = useAddons();
 
     // Get rental days and selected car
     const rentalDays = useMemo(() => {
@@ -40,69 +43,264 @@ export default function Step3Payment({ onPrev, onNext }) {
         return bookingStorage.getCar();
     }, []);
 
-    const selectedPackage = useMemo(() => {
-        const step1Data = bookingStorage.getStep("step1") || {};
-        return step1Data.protectionPlan || "premium";
+    const step1Data = useMemo(() => {
+        return bookingStorage.getStep("step1") || {};
     }, []);
 
-    const selectedCoverage = useMemo(() => {
-        const step1Data = bookingStorage.getStep("step1") || {};
-        return step1Data.coveragePlan || "premium";
+    const step2Data = useMemo(() => {
+        return bookingStorage.getStep("step2") || {};
     }, []);
+
+    const selectedPackage = useMemo(() => {
+        return step1Data.protectionPlan || "premium";
+    }, [step1Data]);
+
+    const selectedCoverage = useMemo(() => {
+        return step1Data.coveragePlan || "premium";
+    }, [step1Data]);
+
+    // Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+                weekday: "short",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+        } catch {
+            return dateString;
+        }
+    };
+
+    // Format time for display
+    const formatTime = (timeString) => {
+        if (!timeString) return "N/A";
+        return timeString;
+    };
+
+    // Calculate addons total
+    const calculateAddonsTotal = () => {
+        const selectedExtras = step1Data.extras || [];
+        let addonsTotal = 0;
+        const addonsList = [];
+
+        selectedExtras.forEach((extraId) => {
+            const extra = extrasData.find(e => e.id === extraId);
+            if (!extra) return;
+
+            // Get addon from API if available
+            let apiAddon = null;
+            if (addonsData && Array.isArray(addonsData) && addonsData.length > 0) {
+                apiAddon = addonsData.find(a => {
+                    const addonName = (a.name || "").toLowerCase();
+                    const extraName = extra.name.toLowerCase();
+                    return addonName === extraName ||
+                        addonName.includes(extraName) ||
+                        extraName.includes(addonName);
+                });
+            }
+
+            let price = 0;
+            if (extraId === "childSeat") {
+                const quantities = step1Data.childSeatQuantities || {};
+                const totalChildSeats = (quantities.babySeat || 0) +
+                    (quantities.childSeat || 0) +
+                    (quantities.boosterSeat || 0);
+                if (totalChildSeats > 0) {
+                    price = apiAddon ? parseFloat(apiAddon.price_per_day || 0) : (extra.price || 0);
+                    price = price * totalChildSeats * rentalDays;
+                    addonsList.push({
+                        name: extra.name,
+                        price: price,
+                        quantity: totalChildSeats
+                    });
+                }
+            } else if (extraId === "foundationDonation") {
+                const donation = step1Data.donationAmount || 0;
+                price = parseFloat(donation) || 0;
+                if (price > 0) {
+                    addonsList.push({
+                        name: extra.name,
+                        price: price
+                    });
+                }
+            } else {
+                price = apiAddon
+                    ? (apiAddon.pricing_type === "per_day"
+                        ? parseFloat(apiAddon.price_per_day || 0) * rentalDays
+                        : parseFloat(apiAddon.price_per_booking || apiAddon.price_per_day || 0))
+                    : (extra.pricingType === "per_day"
+                        ? (extra.price || 0) * rentalDays
+                        : (extra.price || 0));
+                if (price > 0) {
+                    addonsList.push({
+                        name: extra.name,
+                        price: price
+                    });
+                }
+            }
+            addonsTotal += price;
+        });
+
+        return { addonsTotal, addonsList };
+    };
 
     // Calculate total price
     const calculateTotal = () => {
-        const packagePrices = {
-            premium: 25.83,
-            smart: 24.57,
-            lite: 11.00,
-            standard: 13.18,
-        };
-        const baseRatePrice = packagePrices[selectedPackage] || 25.83;
-        const baseRateTotal = baseRatePrice * rentalDays;
+        // Get package price from selected car packages
+        const selectedCar = bookingStorage.getCar();
+        const carPackages = selectedCar?.packages || [];
+        const currentPackage = carPackages.find(pkg => {
+            const pkgType = pkg.package_type?.toLowerCase();
+            const pkgId = pkg.id?.toString().toLowerCase();
+            const selected = selectedPackage?.toString().toLowerCase();
+            return pkgType === selected || pkgId === selected;
+        });
 
-        let coveragePrice = 0;
-        if (selectedCoverage === "premium") {
-            coveragePrice = selectedPackage === "lite" || selectedPackage === "standard" ? 13.57 : 0;
-        } else if (selectedCoverage === "superPremium") {
-            coveragePrice = selectedPackage === "lite" || selectedPackage === "standard" ? 19.78 : 6.21;
+        let baseRatePrice = 0;
+        if (currentPackage) {
+            const rentalCalc = currentPackage.rental_calculation;
+            if (rentalCalc) {
+                baseRatePrice = rentalCalc.daily_rate || rentalCalc.base_rental_cost || currentPackage.price_per_day || 0;
+            } else {
+                baseRatePrice = currentPackage.price_per_day || 0;
+            }
+        } else {
+            // Fallback to default prices
+            const packagePrices = {
+                premium: 25.83,
+                smart: 24.57,
+                lite: 11.00,
+                standard: 13.18,
+            };
+            baseRatePrice = packagePrices[selectedPackage] || 25.83;
         }
+
+        const baseRateTotal = baseRatePrice * rentalDays;
+        const { addonsTotal, addonsList } = calculateAddonsTotal();
 
         return {
             baseRatePrice,
             baseRateTotal,
-            coveragePrice: coveragePrice * rentalDays,
-            total: baseRateTotal + (coveragePrice * rentalDays),
+            addonsTotal,
+            addonsList,
+            total: baseRateTotal + addonsTotal,
         };
     };
 
-    const { baseRatePrice, baseRateTotal, coveragePrice, total } = calculateTotal();
+    const { baseRatePrice, baseRateTotal, addonsTotal, addonsList, total } = calculateTotal();
     const installmentAmount = (total / 3).toFixed(2);
+
+    // Prefill form with step 2 data
+    useEffect(() => {
+        if (step2Data) {
+            if (step2Data.firstName) {
+                form.setValue("firstName", step2Data.firstName);
+            }
+            if (step2Data.lastName) {
+                form.setValue("lastName", step2Data.lastName);
+            }
+            if (step2Data.email) {
+                form.setValue("email", step2Data.email);
+            }
+            if (step2Data.phone) {
+                form.setValue("phone", step2Data.phone);
+            }
+        }
+    }, [step2Data, form]);
+
+    const handleNext = (e) => {
+        e.preventDefault();
+        // Force move to next step regardless of validation
+        // Form values are automatically saved via form.watch() in BookingRoot
+        onNext();
+    };
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(() => onNext())} className="space-y-6">
+            <form onSubmit={handleNext} className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Rental Summary */}
                     <div className="lg:col-span-1 space-y-4">
                         <div className="bg-white border border-gray-200 rounded-lg p-4">
+                            {/* Car Information */}
                             <h3 className="text-lg font-bold text-gray-900 mb-2">
-                                {selectedCar?.name || "Car"} or similar
+                                {selectedCar?.name || `${selectedCar?.model?.make || ""} ${selectedCar?.model?.model || ""}`.trim() || "Car"} or similar
                             </h3>
                             <p className="text-xs text-red-600 mb-1">Best price for these dates</p>
-                            <p className="text-sm text-gray-600 mb-3">{selectedCar?.type || "Small ESMS"}</p>
-                            
+                            <p className="text-sm text-gray-600 mb-3">
+                                {selectedCar?.type || selectedCar?.model?.car_type?.name?.toUpperCase() || "Small ESMS"}
+                            </p>
+
                             {selectedCar?.image && (
                                 <div className="relative w-full h-32 mb-4 bg-gray-50 rounded-lg overflow-hidden">
                                     <Image
-                                        src={selectedCar.image}
-                                        alt={selectedCar.name}
+                                        src={selectedCar.image || selectedCar.image_url || "/assets/cars/ridecard1.png"}
+                                        alt={selectedCar.name || "Car"}
                                         fill
                                         className="object-contain p-2"
                                     />
                                 </div>
                             )}
 
+                            {/* Rental Period */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                <h4 className="text-sm font-bold text-gray-900 mb-2">Rental Period</h4>
+                                <div className="space-y-2 text-sm">
+                                    <div>
+                                        <p className="text-gray-600">Pickup</p>
+                                        <p className="font-semibold text-gray-900">
+                                            {formatDate(step1Data.pickupDate)} {formatTime(step1Data.pickupTime || "12:00")}
+                                        </p>
+                                        <p className="text-xs text-gray-500">{step1Data.pickupLocation || "N/A"}</p>
+                                    </div>
+                                    <div className="border-t border-blue-200 pt-2">
+                                        <p className="text-gray-600">Drop-off</p>
+                                        <p className="font-semibold text-gray-900">
+                                            {formatDate(step1Data.dropoffDate)} {formatTime(step1Data.dropoffTime || "12:00")}
+                                        </p>
+                                        <p className="text-xs text-gray-500">{step1Data.dropoffLocation || step1Data.pickupLocation || "N/A"}</p>
+                                    </div>
+                                    <div className="pt-2 border-t border-blue-200">
+                                        <p className="text-gray-600">Duration</p>
+                                        <p className="font-semibold text-gray-900">{rentalDays} {rentalDays === 1 ? "day" : "days"}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* User Information */}
+                            {(step2Data.firstName || step2Data.lastName || step2Data.email || step2Data.phone) && (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                                    <h4 className="text-sm font-bold text-gray-900 mb-2">Customer Information</h4>
+                                    <div className="space-y-1 text-sm">
+                                        {(step2Data.firstName || step2Data.lastName) && (
+                                            <p className="text-gray-700">
+                                                <span className="font-medium">Name:</span> {step2Data.firstName || ""} {step2Data.lastName || ""}
+                                            </p>
+                                        )}
+                                        {step2Data.email && (
+                                            <p className="text-gray-700">
+                                                <span className="font-medium">Email:</span> {step2Data.email}
+                                            </p>
+                                        )}
+                                        {step2Data.phone && (
+                                            <p className="text-gray-700">
+                                                <span className="font-medium">Phone:</span> {step2Data.phone}
+                                            </p>
+                                        )}
+                                        {step2Data.flightNumber && (
+                                            <p className="text-gray-700">
+                                                <span className="font-medium">Flight:</span> {step2Data.flightNumber}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Package and Pricing */}
                             <div className="bg-gray-100 rounded-lg p-3 mb-4">
                                 <p className="text-sm text-gray-600">
                                     {selectedPackage === "premium" ? "Premium" : selectedPackage === "smart" ? "Smart" : selectedPackage === "lite" ? "Lite" : "Standard"} Rate x {rentalDays} days
@@ -112,17 +310,61 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 </p>
                             </div>
 
+                            {/* Summary of Your Rental */}
                             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
                                 <h4 className="text-sm font-bold text-gray-900 mb-2">
                                     SUMMARY OF YOUR RENTAL
                                 </h4>
-                                <div className="space-y-1 text-sm">
+                                <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-gray-700">
-                                            {selectedCoverage === "basic" ? "Basic Cover" : selectedCoverage === "premium" ? "Premium Cover" : "Super Premium Cover"}
+                                            {selectedPackage === "premium" ? "Premium" : selectedPackage === "smart" ? "Smart" : selectedPackage === "lite" ? "Lite" : "Standard"} Package
                                         </span>
                                         <span className="text-green-600 font-medium">INCLUDED</span>
                                     </div>
+                                    {addonsList && addonsList.length > 0 && (
+                                        <div className="pt-2 border-t border-purple-200 space-y-1">
+                                            {addonsList.map((addon, index) => (
+                                                <div key={index} className="flex justify-between">
+                                                    <span className="text-gray-700">{addon.name}</span>
+                                                    <span className="text-gray-900 font-medium">
+                                                        {addon.price.toFixed(2)} €
+                                                        {addon.quantity && ` (x${addon.quantity})`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Price Breakdown */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Base Rate:</span>
+                                        <span className="text-gray-900 font-medium">
+                                            {baseRatePrice.toFixed(2)} €/day
+                                        </span>
+                                    </div>
+                                    {addonsTotal > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Addons:</span>
+                                            <span className="text-gray-900 font-medium">
+                                                {addonsTotal.toFixed(2)} €
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="pt-2 border-t border-gray-200 flex justify-between">
+                                        <span className="text-gray-900 font-bold">Total:</span>
+                                        <span className="text-gray-900 font-bold text-lg">
+                                            {total.toFixed(2)} €
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {baseRatePrice.toFixed(0)} € base ({rentalDays} {rentalDays === 1 ? "day" : "days"})
+                                        {addonsTotal > 0 && ` + ${addonsTotal.toFixed(2)} € addons`}
+                                    </p>
                                 </div>
                             </div>
 
@@ -163,42 +405,42 @@ export default function Step3Payment({ onPrev, onNext }) {
 
                     {/* Right Column - Form and Payment */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Your Data Section */}
+                        {/* Customer Information Section */}
                         <div className="bg-white border border-gray-200 rounded-lg p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">Your data</h2>
-                            
+                            <h2 className="text-xl font-bold text-gray-900 mb-4">Customer Information</h2>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField 
-                                    control={form.control} 
-                                    name="firstName" 
+                                <FormField
+                                    control={form.control}
+                                    name="firstName"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Driver's name *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Nyssa" {...field} />
+                                                <Input placeholder="Nyssa" {...field} value={field.value || ""} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                    )} 
+                                    )}
                                 />
 
-                                <FormField 
-                                    control={form.control} 
-                                    name="lastName" 
+                                <FormField
+                                    control={form.control}
+                                    name="lastName"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Driver's surname *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Mccall" {...field} />
+                                                <Input placeholder="Mccall" {...field} value={field.value || ""} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                    )} 
+                                    )}
                                 />
 
-                                <FormField 
-                                    control={form.control} 
-                                    name="licenseNumber" 
+                                <FormField
+                                    control={form.control}
+                                    name="licenseNumber"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>ID/passport number *</FormLabel>
@@ -207,47 +449,48 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                    )} 
+                                    )}
                                 />
 
-                                <FormField 
-                                    control={form.control} 
-                                    name="phone" 
+                                <FormField
+                                    control={form.control}
+                                    name="phone"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Contact phone number *</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🇺🇸</span>
-                                                    <Input 
-                                                        placeholder="+1 (508) 614-8823" 
+                                                    <Input
+                                                        placeholder="+1 (508) 614-8823"
                                                         className="pl-10"
-                                                        {...field} 
+                                                        {...field}
+                                                        value={field.value || ""}
                                                     />
                                                 </div>
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                    )} 
+                                    )}
                                 />
 
-                                <FormField 
-                                    control={form.control} 
-                                    name="email" 
+                                <FormField
+                                    control={form.control}
+                                    name="email"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Email *</FormLabel>
                                             <FormControl>
-                                                <Input type="email" placeholder="hamipo@mailinator.com" {...field} />
+                                                <Input type="email" placeholder="hamipo@mailinator.com" {...field} value={field.value || ""} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
-                                    )} 
+                                    )}
                                 />
 
-                                <FormField 
-                                    control={form.control} 
-                                    name="country" 
+                                <FormField
+                                    control={form.control}
+                                    name="country"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Country *</FormLabel>
@@ -265,7 +508,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </Select>
                                             <FormMessage />
                                         </FormItem>
-                                    )} 
+                                    )}
                                 />
                             </div>
 
@@ -361,7 +604,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                         {/* Payment Method Selection */}
                         <div className="bg-white border border-gray-200 rounded-lg p-6">
                             <h2 className="text-xl font-bold text-gray-900 mb-4">Select type of payment</h2>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Credit Card */}
                                 <FormField
@@ -371,11 +614,10 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         <FormItem>
                                             <FormControl>
                                                 <div
-                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                                        field.value === "credit"
-                                                            ? "border-blue-600 bg-blue-50"
-                                                            : "border-gray-200 hover:border-gray-300"
-                                                    }`}
+                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${field.value === "credit"
+                                                        ? "border-blue-600 bg-blue-50"
+                                                        : "border-gray-200 hover:border-gray-300"
+                                                        }`}
                                                     onClick={() => field.onChange("credit")}
                                                 >
                                                     <div className="flex items-center justify-between mb-2">
@@ -403,11 +645,10 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         <FormItem>
                                             <FormControl>
                                                 <div
-                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                                        field.value === "bizum"
-                                                            ? "border-blue-600 bg-blue-50"
-                                                            : "border-gray-200 hover:border-gray-300"
-                                                    }`}
+                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${field.value === "bizum"
+                                                        ? "border-blue-600 bg-blue-50"
+                                                        : "border-gray-200 hover:border-gray-300"
+                                                        }`}
                                                     onClick={() => field.onChange("bizum")}
                                                 >
                                                     <div className="flex items-center justify-between">
@@ -431,11 +672,10 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         <FormItem>
                                             <FormControl>
                                                 <div
-                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                                        field.value === "scalapay"
-                                                            ? "border-blue-600 bg-blue-50"
-                                                            : "border-gray-200 hover:border-gray-300"
-                                                    }`}
+                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${field.value === "scalapay"
+                                                        ? "border-blue-600 bg-blue-50"
+                                                        : "border-gray-200 hover:border-gray-300"
+                                                        }`}
                                                     onClick={() => field.onChange("scalapay")}
                                                 >
                                                     <div className="flex items-center justify-between">
@@ -461,11 +701,10 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         <FormItem>
                                             <FormControl>
                                                 <div
-                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                                        field.value === "klarna"
-                                                            ? "border-blue-600 bg-blue-50"
-                                                            : "border-gray-200 hover:border-gray-300"
-                                                    }`}
+                                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${field.value === "klarna"
+                                                        ? "border-blue-600 bg-blue-50"
+                                                        : "border-gray-200 hover:border-gray-300"
+                                                        }`}
                                                     onClick={() => field.onChange("klarna")}
                                                 >
                                                     <div className="flex items-center justify-between">
@@ -487,9 +726,9 @@ export default function Step3Payment({ onPrev, onNext }) {
                             {/* Credit Card Details (shown when credit card is selected) */}
                             {form.watch("paymentMethod") === "credit" && (
                                 <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
-                                    <FormField 
-                                        control={form.control} 
-                                        name="cardholderName" 
+                                    <FormField
+                                        control={form.control}
+                                        name="cardholderName"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Cardholder Name</FormLabel>
@@ -498,12 +737,12 @@ export default function Step3Payment({ onPrev, onNext }) {
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
-                                        )} 
+                                        )}
                                     />
 
-                                    <FormField 
-                                        control={form.control} 
-                                        name="cardNumber" 
+                                    <FormField
+                                        control={form.control}
+                                        name="cardNumber"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Card Number</FormLabel>
@@ -516,13 +755,13 @@ export default function Step3Payment({ onPrev, onNext }) {
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
-                                        )} 
+                                        )}
                                     />
 
                                     <div className="grid grid-cols-2 gap-4">
-                                        <FormField 
-                                            control={form.control} 
-                                            name="expiryDate" 
+                                        <FormField
+                                            control={form.control}
+                                            name="expiryDate"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Expiry Date</FormLabel>
@@ -531,12 +770,12 @@ export default function Step3Payment({ onPrev, onNext }) {
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
-                                            )} 
+                                            )}
                                         />
 
-                                        <FormField 
-                                            control={form.control} 
-                                            name="cvv" 
+                                        <FormField
+                                            control={form.control}
+                                            name="cvv"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>CVV</FormLabel>
@@ -545,7 +784,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
-                                            )} 
+                                            )}
                                         />
                                     </div>
                                 </div>
@@ -563,8 +802,8 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 <ArrowLeft className="w-4 h-4" />
                                 Back
                             </Button>
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-8 py-6 text-lg"
                             >
                                 CONTINUE

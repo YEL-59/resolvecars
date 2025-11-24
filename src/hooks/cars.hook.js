@@ -42,6 +42,9 @@ const transformCarData = (apiCar) => {
     pickupInfo: apiCar.current_location?.address || "Rental Car Center",
     available: apiCar.status === "available" ? "Available 24/7" : "Unavailable",
     availability: apiCar.availability || null,
+    available_date: apiCar.available_date || null, // Preserve available_date for availability checking
+    available_start_date: apiCar.available_start_date || null, // Preserve available_start_date for availability checking
+    available_end_date: apiCar.available_end_date || null, // Preserve available_end_date for availability checking
     // Keep original API data for reference
     _apiData: apiCar,
     packages: packages.map(pkg => ({
@@ -58,6 +61,10 @@ const transformCarData = (apiCar) => {
       is_active: pkg.is_active !== false,
       // Include rental_calculation if available (from search API)
       rental_calculation: pkg.rental_calculation || null,
+      // Preserve all original package fields (including protection_plan_id if it exists)
+      protection_plan_id: pkg.protection_plan_id || pkg.protectionPlanId || null,
+      // Keep original API data for reference
+      _original: pkg,
     })),
   };
 };

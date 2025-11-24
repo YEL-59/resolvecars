@@ -22,25 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { bookingStorage } from "@/lib/bookingStorage";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
-// Fake location data
-const LOCATIONS = [
-  { id: 1, name: "Majorca Palma Airport (PMI)", address: "Palma de Mallorca, Spain" },
-  { id: 2, name: "Barcelona El Prat Airport (BCN)", address: "Barcelona, Spain" },
-  { id: 3, name: "Madrid Barajas Airport (MAD)", address: "Madrid, Spain" },
-  { id: 4, name: "Paris Charles de Gaulle (CDG)", address: "Paris, France" },
-  { id: 5, name: "London Heathrow (LHR)", address: "London, UK" },
-  { id: 6, name: "Rome Fiumicino Airport (FCO)", address: "Rome, Italy" },
-  { id: 7, name: "Amsterdam Schiphol (AMS)", address: "Amsterdam, Netherlands" },
-  { id: 8, name: "Berlin Brandenburg (BER)", address: "Berlin, Germany" },
-  { id: 9, name: "Vienna Airport (VIE)", address: "Vienna, Austria" },
-  { id: 10, name: "Prague Airport (PRG)", address: "Prague, Czech Republic" },
-  { id: 11, name: "Dubai International (DXB)", address: "Dubai, UAE" },
-  { id: 12, name: "New York JFK (JFK)", address: "New York, USA" },
-  { id: 13, name: "Los Angeles (LAX)", address: "Los Angeles, USA" },
-  { id: 14, name: "Tokyo Narita (NRT)", address: "Tokyo, Japan" },
-  { id: 15, name: "Sydney Airport (SYD)", address: "Sydney, Australia" },
-];
+import { useLocations } from "@/hooks/locations.hook";
 
 // Time Selector Component
 const TimeSelector = ({ value, onChange, label }) => {
@@ -100,14 +82,32 @@ const TimeSelector = ({ value, onChange, label }) => {
 const SearchableLocationInput = ({
   value,
   onChange,
+  onLocationSelect,
   placeholder = "City, airport...",
   label
 }) => {
   const [searchQuery, setSearchQuery] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredLocations, setFilteredLocations] = useState([]);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  // Fetch locations from API
+  const { data, isLoading } = useLocations({
+    per_page: 15,
+    search: searchQuery.trim() || undefined
+  });
+
+  // Get locations and filter client-side if needed (as fallback)
+  const allLocations = data?.locations || [];
+  const locations = searchQuery.trim().length > 0
+    ? allLocations.filter(
+      (loc) =>
+        loc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loc.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loc.city?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : allLocations;
 
   useEffect(() => {
     if (value) {
@@ -136,31 +136,35 @@ const SearchableLocationInput = ({
     setSearchQuery(query);
 
     if (query.trim().length > 0) {
-      const filtered = LOCATIONS.filter(
-        (loc) =>
-          loc.name.toLowerCase().includes(query.toLowerCase()) ||
-          loc.address.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredLocations(filtered);
       setShowSuggestions(true);
     } else {
-      // Show all locations when input is empty but focused
-      setFilteredLocations(LOCATIONS);
       setShowSuggestions(true);
       onChange("");
+      if (onLocationSelect) {
+        onLocationSelect(null);
+      }
+      setSelectedLocationId(null);
     }
   };
 
   const handleSelectLocation = (location) => {
-    setSearchQuery(location.name);
-    onChange(location.name);
+    const displayName = `${location.name}${location.city ? `, ${location.city}` : ""}`;
+    setSearchQuery(displayName);
+    onChange(displayName);
+    setSelectedLocationId(location.id);
+    if (onLocationSelect) {
+      onLocationSelect(location.id);
+    }
     setShowSuggestions(false);
   };
 
   const handleClear = () => {
     setSearchQuery("");
     onChange("");
-    setFilteredLocations([]);
+    setSelectedLocationId(null);
+    if (onLocationSelect) {
+      onLocationSelect(null);
+    }
     setShowSuggestions(false);
     inputRef.current?.focus();
   };
@@ -175,18 +179,8 @@ const SearchableLocationInput = ({
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => {
-            if (searchQuery.trim().length > 0) {
-              // If there's a query, filter locations
-              const filtered = LOCATIONS.filter(
-                (loc) =>
-                  loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  loc.address.toLowerCase().includes(searchQuery.toLowerCase())
-              );
-              setFilteredLocations(filtered);
-            } else {
-              // If no query, show all locations
-              setFilteredLocations(LOCATIONS);
-            }
+            // Show suggestions when input is focused
+            // Locations are already fetched and filtered via the API hook
             setShowSuggestions(true);
           }}
           placeholder={placeholder}
@@ -203,22 +197,36 @@ const SearchableLocationInput = ({
         )}
       </div>
 
-      {showSuggestions && filteredLocations.length > 0 && (
+      {showSuggestions && (isLoading || locations.length > 0) && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
         >
-          {filteredLocations.map((location) => (
-            <button
-              key={location.id}
-              type="button"
-              onClick={() => handleSelectLocation(location)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
-            >
-              <div className="font-medium text-gray-900">{location.name}</div>
-              <div className="text-sm text-gray-500">{location.address}</div>
-            </button>
-          ))}
+          {isLoading ? (
+            <div className="px-4 py-3 text-sm text-gray-500">Loading locations...</div>
+          ) : locations.length > 0 ? (
+            locations.map((location) => {
+              const displayAddress = [
+                location.address,
+                location.city,
+                location.country
+              ].filter(Boolean).join(", ");
+
+              return (
+                <button
+                  key={location.id}
+                  type="button"
+                  onClick={() => handleSelectLocation(location)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                >
+                  <div className="font-medium text-gray-900">{location.name}</div>
+                  <div className="text-sm text-gray-500">{displayAddress || location.address}</div>
+                </button>
+              );
+            })
+          ) : searchQuery.trim().length > 0 ? (
+            <div className="px-4 py-3 text-sm text-gray-500">No locations found</div>
+          ) : null}
         </div>
       )}
     </div>
@@ -237,6 +245,8 @@ const CarsHeroSection = () => {
   const [mounted, setMounted] = useState(false);
   const [pickupLocation, setPickupLocation] = useState("");
   const [returnLocation, setReturnLocation] = useState("");
+  const [pickupLocationId, setPickupLocationId] = useState(null);
+  const [returnLocationId, setReturnLocationId] = useState(null);
   const [sameStore, setSameStore] = useState(true);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
@@ -247,10 +257,12 @@ const CarsHeroSection = () => {
       if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
       if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
       if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
+      if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
       if (step1.dropoffLocation) {
         setReturnLocation(step1.dropoffLocation);
         setSameStore(step1.pickupLocation === step1.dropoffLocation);
       }
+      if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
     } catch { }
   }, []);
 
@@ -289,13 +301,42 @@ const CarsHeroSection = () => {
     return format(date, "dd/MM/yyyy");
   };
 
+  // Format date as Y-m-d (e.g., 2025-11-12)
+  const formatDateForAPI = (date) => {
+    if (!date) return "";
+    return format(date, "yyyy-MM-dd");
+  };
+
   const handleSearch = () => {
-    if (!pickupDate || !returnDate || !pickupLocation) {
+    if (!pickupDate || !returnDate || !pickupLocationId) {
       return;
     }
-    if (!sameStore && !returnLocation) {
+    if (!sameStore && !returnLocationId) {
       return;
     }
+
+    // Determine final location IDs
+    const finalPickupId = pickupLocationId;
+    const finalReturnId = sameStore ? pickupLocationId : returnLocationId;
+
+    // Format dates for API (Y-m-d format)
+    const formattedPickupDate = formatDateForAPI(pickupDate);
+    const formattedReturnDate = formatDateForAPI(returnDate);
+
+    // Format times (H:i format, default to 12:00 if not set)
+    const formattedPickupTime = pickupTime || "12:00";
+    const formattedReturnTime = returnTime || "12:00";
+
+    console.log("Search Parameters:", {
+      pickup_location_id: finalPickupId,
+      return_location_id: finalReturnId,
+      pickup_date: formattedPickupDate,
+      pickup_time: formattedPickupTime,
+      return_date: formattedReturnDate,
+      return_time: formattedReturnTime,
+    });
+
+    // Store in booking storage
     const toISO = (dateObj, timeStr) => {
       try {
         const d = new Date(dateObj);
@@ -313,19 +354,39 @@ const CarsHeroSection = () => {
       pickupDate: toISO(pickupDate, pickupTime),
       dropoffDate: toISO(returnDate, returnTime),
       pickupLocation: pickupLocation,
+      pickupLocationId: finalPickupId,
       dropoffLocation: sameStore ? pickupLocation : returnLocation,
+      dropoffLocationId: finalReturnId,
       requirements: "",
       protectionPlan: "basic",
       extras: [],
     });
 
-    router.push("/cars");
+    // Navigate to cars page with search parameters
+    const searchParams = new URLSearchParams({
+      pickup_location_id: finalPickupId.toString(),
+      pickup_date: formattedPickupDate,
+      return_date: formattedReturnDate,
+    });
+
+    // Always include return_location_id (use pickup location if same store)
+    searchParams.append("return_location_id", finalReturnId.toString());
+
+    if (formattedPickupTime !== "12:00") {
+      searchParams.append("pickup_time", formattedPickupTime);
+    }
+    if (formattedReturnTime !== "12:00") {
+      searchParams.append("return_time", formattedReturnTime);
+    }
+
+    router.push(`/cars?${searchParams.toString()}`);
   };
 
   // Clear return location when sameStore is checked
   useEffect(() => {
     if (sameStore) {
       setReturnLocation("");
+      setReturnLocationId(null);
     }
   }, [sameStore]);
 
@@ -416,11 +477,12 @@ const CarsHeroSection = () => {
             {/* Pick-up/Return Store */}
             <div className="space-y-2">
               <label className="text-xs text-gray-100 block">
-                {sameStore ? "Pick-up/Return Store" : "Pick-up Store"}
+                {sameStore ? "Pick-up/Return Store" : "Pick-up/Return Store"}
               </label>
               <SearchableLocationInput
                 value={pickupLocation}
                 onChange={setPickupLocation}
+                onLocationSelect={setPickupLocationId}
                 placeholder="City, airport..."
               />
             </div>
@@ -434,6 +496,7 @@ const CarsHeroSection = () => {
                 <SearchableLocationInput
                   value={returnLocation}
                   onChange={setReturnLocation}
+                  onLocationSelect={setReturnLocationId}
                   placeholder="City, airport..."
                 />
               </div>
@@ -493,8 +556,12 @@ const CarsHeroSection = () => {
                         selected={pickupDate}
                         onChange={(date) => {
                           setPickupDate(date);
-                          if (date && returnDate && date > returnDate) {
-                            setReturnDate(null);
+                          // If pickup date is after return date, reset return date
+                          if (date && returnDate && date >= returnDate) {
+                            // Set return date to next day after pickup
+                            const nextDay = new Date(date);
+                            nextDay.setDate(nextDay.getDate() + 1);
+                            setReturnDate(nextDay);
                           }
                         }}
                         selectsStart
@@ -562,14 +629,20 @@ const CarsHeroSection = () => {
                         selected={returnDate}
                         onChange={(date) => {
                           setReturnDate(date);
-                          if (date && pickupDate && date < pickupDate) {
-                            setPickupDate(null);
+                          // If return date is before or equal to pickup date, adjust pickup date
+                          if (date && pickupDate && date <= pickupDate) {
+                            // Set pickup date to previous day before return
+                            const prevDay = new Date(date);
+                            prevDay.setDate(prevDay.getDate() - 1);
+                            if (prevDay >= new Date()) {
+                              setPickupDate(prevDay);
+                            }
                           }
                         }}
                         selectsEnd
                         startDate={pickupDate}
                         endDate={returnDate}
-                        minDate={pickupDate || new Date()}
+                        minDate={pickupDate ? new Date(new Date(pickupDate).setDate(pickupDate.getDate() + 1)) : new Date()}
                         monthsShown={isMobile ? 1 : 2}
                         inline
                         calendarClassName="!border-0"

@@ -15,34 +15,59 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   ArrowRight,
-  CreditCard,
   User,
-  IdCard,
-  MapPin,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useGetUser } from "@/hooks/auth.hook";
 
 export default function Step2Customer({ onPrev, onNext }) {
   const form = useFormContext();
+  const { data: userData } = useGetUser();
 
   useEffect(() => {
-    // no-op; values are prefilled from root defaults
-  }, []);
+    // Prefill form with all available user data from API
+    // User can still edit any field if needed
+    if (userData) {
+      // Handle different API response structures
+      const user = userData?.data || userData;
+
+      if (user) {
+        // Fill all available data from API (user can still edit)
+        if (user.first_name) {
+          form.setValue("firstName", user.first_name);
+        }
+        if (user.last_name) {
+          form.setValue("lastName", user.last_name);
+        }
+        if (user.email) {
+          form.setValue("email", user.email);
+        }
+        // Check both phone and phone_number fields
+        const phoneValue = user.phone || user.phone_number;
+        if (phoneValue) {
+          form.setValue("phone", phoneValue);
+        }
+        if (user.flight_number) {
+          form.setValue("flightNumber", user.flight_number);
+        }
+      }
+    }
+  }, [userData, form]);
 
   const getMinLicenseExpiry = () => {
     const today = new Date();
     return today.toISOString().split("T")[0];
   };
 
+  const handleNext = (e) => {
+    e.preventDefault();
+    // Force move to next step regardless of validation
+    // Form values are automatically saved via form.watch() in BookingRoot
+    onNext();
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(() => onNext())} className="space-y-8">
+      <form onSubmit={handleNext} className="space-y-8">
         <div className="rounded-xl border bg-rose-50/60 p-6 space-y-4">
           {/* <h3 className="text-base font-semibold text-rose-700 flex items-center gap-2">
             <User className="w-5 h-5" />
