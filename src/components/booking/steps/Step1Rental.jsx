@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +42,7 @@ import {
 
 export default function Step1Rental({ onNext }) {
   const form = useFormContext();
+  const searchParams = useSearchParams();
   const [selectedCoverage, setSelectedCoverage] = useState("premium");
   const [showMoreExtras, setShowMoreExtras] = useState(false);
   const [donationAmount, setDonationAmount] = useState(0);
@@ -59,7 +61,14 @@ export default function Step1Rental({ onNext }) {
   const createBookingMutation = useCreateBooking();
 
   // Fetch addons from API
-  const { data: addonsData, isLoading: isLoadingAddons } = useAddons();
+  const { data: addonsData, isLoading: isLoadingAddons, refetch: refetchAddons } = useAddons();
+
+  // Refetch addons data on component mount to ensure fresh data
+  useEffect(() => {
+    console.log("Step1Rental: Component mounted - refetching addons data to get latest prices...");
+    refetchAddons();
+  }, []); // Run only on mount
+
   // Load existing child seat quantities when modal opens
   useEffect(() => {
     if (isChildSeatModalOpen) {
@@ -92,9 +101,120 @@ export default function Step1Rental({ onNext }) {
     return bookingStorage.getCar();
   }, []);
 
+  // Track previous car ID to detect car changes
+  const [previousCarId, setPreviousCarId] = useState(() => {
+    // Initialize with stored car ID if available
+    const existing = bookingStorage.getStep("step1") || {};
+    return existing.lastCarId || null;
+  });
+
+  // Clear extras/addons when car changes or on initial load with different car
   useEffect(() => {
-    const existing = bookingStorage.getStep("step1");
-    if (existing) {
+    const currentCarId = selectedCar?.id;
+    const existing = bookingStorage.getStep("step1") || {};
+    const storedCarId = existing.lastCarId || previousCarId;
+
+    // If car has changed or this is a new car selection, clear extras
+    if (currentCarId && currentCarId !== storedCarId) {
+      console.log("Car changed or new car selected. Clearing extras/addons.", {
+        previousCarId: storedCarId,
+        newCarId: currentCarId,
+      });
+
+      // Clear all extras (will be re-added based on package type)
+      const clearedExtras = [];
+
+      // Clear child seat quantities
+      const clearedChildSeatQuantities = {
+        babySeat: 0,
+        childSeat: 0,
+        boosterSeat: 0,
+      };
+
+      // Clear donation
+      const clearedDonationAmount = 0;
+      const clearedCustomDonation = "";
+
+      // Update step1 with cleared extras and store current car ID
+      bookingStorage.updateStep("step1", {
+        ...existing,
+        extras: clearedExtras,
+        childSeatQuantities: clearedChildSeatQuantities,
+        donationAmount: clearedDonationAmount,
+        customDonation: clearedCustomDonation,
+        lastCarId: currentCarId, // Store current car ID to track changes
+        // Clear booking-related data when car changes
+        bookingId: null,
+        bookingResponse: null,
+        bookingData: null,
+        total_amount: null,
+        total: null,
+        subtotal: null,
+        taxAmount: null,
+      });
+
+      // Update form values and local state
+      form.setValue("extras", clearedExtras);
+      setChildSeatQuantities(clearedChildSeatQuantities);
+      setDonationAmount(clearedDonationAmount);
+      setCustomDonation(clearedCustomDonation);
+      setPriceUpdateKey(prev => prev + 1); // Force price recalculation
+
+      // Update previous car ID
+      setPreviousCarId(currentCarId);
+    } else if (currentCarId && !storedCarId) {
+      // First time selecting this car, just store the car ID
+      bookingStorage.updateStep("step1", {
+        ...existing,
+        lastCarId: currentCarId,
+      });
+      setPreviousCarId(currentCarId);
+    }
+  }, [selectedCar?.id, form, previousCarId]);
+
+  useEffect(() => {
+    const existing = bookingStorage.getStep("step1") || {};
+    let needsUpdate = false;
+
+    // If location IDs are missing from bookingStorage, try to get from URL params
+    if (!existing.pickupLocationId && !existing.pickup_location_id) {
+      const urlPickupLocationId = searchParams.get("pickup_location_id");
+      if (urlPickupLocationId) {
+        const pickupId = parseInt(urlPickupLocationId);
+        existing.pickupLocationId = pickupId;
+        existing.pickup_location_id = pickupId;
+        needsUpdate = true;
+        console.log("Restored pickupLocationId from URL:", pickupId);
+      }
+    }
+
+    if (!existing.dropoffLocationId && !existing.return_location_id) {
+      const urlReturnLocationId = searchParams.get("return_location_id");
+      if (urlReturnLocationId) {
+        const returnId = parseInt(urlReturnLocationId);
+        existing.dropoffLocationId = returnId;
+        existing.return_location_id = returnId;
+        needsUpdate = true;
+        console.log("Restored dropoffLocationId from URL:", returnId);
+      } else if (existing.pickupLocationId) {
+        // If same store, use pickup location as return location
+        existing.dropoffLocationId = existing.pickupLocationId;
+        existing.return_location_id = existing.pickupLocationId;
+        needsUpdate = true;
+        console.log("Using pickupLocationId as dropoffLocationId (same store)");
+      }
+    }
+
+    // Update bookingStorage with any missing data from URL
+    if (needsUpdate) {
+      bookingStorage.updateStep("step1", existing);
+      console.log("Updated step1 with location IDs:", {
+        pickupLocationId: existing.pickupLocationId,
+        dropoffLocationId: existing.dropoffLocationId,
+      });
+    }
+
+    if (Object.keys(existing).length > 0) {
       form.reset({ ...form.getValues(), ...existing });
       // Set coverage based on protection plan from car card selection
       const packageId = existing.protectionPlan || "premium";
@@ -290,6 +410,7 @@ export default function Step1Rental({ onNext }) {
   };
 
   // Calculate prices based on selected package from car data
+  // Package price_per_day is already the discounted price if has_discount is true
   const getBaseRatePrice = () => {
     if (currentPackage) {
       // Use rental_calculation if available (from search API), otherwise use price_per_day
@@ -297,7 +418,15 @@ export default function Step1Rental({ onNext }) {
       if (rentalCalc) {
         return rentalCalc.daily_rate || rentalCalc.base_rental_cost || currentPackage.price_per_day || 0;
       }
-      return currentPackage.price_per_day || 0;
+
+      // Use price_per_day from package (this is already discounted if has_discount is true)
+      // The API returns price_per_day as the final price (discounted if applicable)
+      const packagePrice = parseFloat(currentPackage.price_per_day || 0);
+
+      // If has_discount is true, price_per_day is already the discounted price
+      // If has_discount is false, price_per_day is the regular price
+      // So we just use price_per_day directly
+      return packagePrice;
     }
     // Fallback to hardcoded prices if package data not available
     const packagePrices = {
@@ -311,15 +440,40 @@ export default function Step1Rental({ onNext }) {
   const baseRatePrice = useMemo(() => getBaseRatePrice(), [currentPackage, selectedPackage, packageUpdateKey]);
   const baseRateTotal = useMemo(() => baseRatePrice * rentalDays, [baseRatePrice, rentalDays]);
 
-  // Get car's base price from car_prices (separate from package price)
+  // Clear total_amount from previous booking when selections change (if no bookingId exists)
+  // This ensures we recalculate instead of using old totals
+  useEffect(() => {
+    const step1Data = bookingStorage.getStep("step1") || {};
+    // If we have total_amount but no bookingId, clear it so we recalculate
+    if (step1Data.total_amount && !step1Data.bookingId) {
+      bookingStorage.updateStep("step1", {
+        ...step1Data,
+        total_amount: undefined, // Clear old total_amount
+      });
+    }
+  }, [watchedExtras, selectedPackage, rentalDays, priceUpdateKey]);
+
+  // Get car's base price - backend uses model.daily_base_rate × days
+  // Based on API: base_rental_cost = daily_base_rate × duration_days
   const carBasePrice = useMemo(() => {
     const car = selectedCar;
     if (!car) return null;
 
-    // Try to get from _apiData.model.car_prices
+    // Backend uses model.daily_base_rate for base_rental_cost calculation
+    const dailyBaseRate = car._apiData?.model?.daily_base_rate ||
+      car.model?.daily_base_rate ||
+      null;
+
+    if (dailyBaseRate) {
+      return {
+        price_per_day: parseFloat(dailyBaseRate) || 0,
+        display_price: `$${parseFloat(dailyBaseRate).toFixed(2)}`,
+      };
+    }
+
+    // Fallback: Try to get from car_prices
     const carPrices = car._apiData?.model?.car_prices || car._apiData?.car_prices;
     if (carPrices && Array.isArray(carPrices) && carPrices.length > 0) {
-      // Get the first active price or just the first one
       const activePrice = carPrices.find(p => p.is_active !== false) || carPrices[0];
       return {
         price_per_day: activePrice.price_per_day || 0,
@@ -338,10 +492,12 @@ export default function Step1Rental({ onNext }) {
     return null;
   }, [selectedCar]);
 
-  // Car price is FIXED (not multiplied by days)
+  // Car base price total = fixed price (NOT multiplied by days)
   const carBasePriceTotal = useMemo(() => {
     if (!carBasePrice) return 0;
-    return carBasePrice.price_per_day || 0; // Fixed price, not per day
+    const fixedPrice = carBasePrice.price_per_day || 0;
+    // Car rental is a fixed price, not multiplied by days
+    return fixedPrice;
   }, [carBasePrice]);
 
   // Calculate addons total price
@@ -403,14 +559,136 @@ export default function Step1Rental({ onNext }) {
   }, [watchedExtras, childSeatQuantities, donationAmount, customDonation, rentalDays, priceUpdateKey, addonsData]);
 
   // Calculate grand total (car base price + package price + addons)
+  // Only use total_amount from booking API if booking has already been created
+  // Otherwise, always recalculate based on current selections
   const grandTotal = useMemo(() => {
-    const carPrice = carBasePriceTotal || 0;
-    return carPrice + baseRateTotal + addonsTotal;
+    const step1Data = bookingStorage.getStep("step1") || {};
+
+    // Only use total_amount from booking API if we have a bookingId (booking already created)
+    // This prevents using old totals when user changes selections
+    if (step1Data.total_amount && step1Data.bookingId) {
+      // Booking already exists, use API total
+      return parseFloat(step1Data.total_amount) || 0;
+    }
+
+    // Otherwise, always recalculate based on current selections
+    // Match backend calculation exactly:
+    // base_rental_cost = fixed car price (NOT multiplied by days)
+    // package_cost = package_price_per_day × days
+    // addons_cost = sum of (addon_price_per_day × quantity × days)
+    // subtotal = base_rental_cost + package_cost + addons_cost
+    // tax_amount = subtotal × tax_percentage / 100
+    // total_amount = subtotal + tax_amount
+
+    const baseRentalCost = carBasePriceTotal || 0; // Fixed car price (not multiplied by days)
+    const packageCost = baseRateTotal || 0; // package_price_per_day × days
+    const addonsCost = addonsTotal || 0; // sum of addons × days
+
+    // Calculate subtotal (before tax)
+    const subtotal = baseRentalCost + packageCost + addonsCost;
+
+    // Calculate tax (default 10% if not specified, matching backend)
+    const taxPercentage = 10; // Default tax percentage (can be made configurable)
+    const taxAmount = subtotal * (taxPercentage / 100);
+
+    // Calculate total (subtotal + tax)
+    const total = subtotal + taxAmount;
+
+    // Store calculated values in bookingStorage for consistency across steps
+    if (step1Data.total !== total || step1Data.subtotal !== subtotal || step1Data.taxAmount !== taxAmount) {
+      bookingStorage.updateStep("step1", {
+        ...step1Data,
+        total: total,
+        subtotal: subtotal,
+        taxAmount: taxAmount,
+        taxPercentage: taxPercentage,
+        carBasePrice: baseRentalCost,
+        baseRateTotal: packageCost,
+        addonsTotal: addonsCost,
+      });
+    }
+
+    return total;
   }, [carBasePriceTotal, baseRateTotal, addonsTotal]);
 
   // Prepare booking data for API
   const prepareBookingData = () => {
-    const step1Data = bookingStorage.getStep("step1") || {};
+    // Get ALL booking data first to debug
+    const allBookingData = bookingStorage.getData();
+    console.log("All booking data:", allBookingData);
+
+    // Get step1 data from bookingStorage
+    let step1Data = bookingStorage.getStep("step1") || {};
+    console.log("Step1 data from bookingStorage:", step1Data);
+
+    // If step1Data is empty or missing critical fields, try multiple fallbacks
+    if (!step1Data || Object.keys(step1Data).length === 0 || !step1Data.pickupDate) {
+      console.warn("Step1 data is empty or missing, trying fallbacks...");
+
+      // Try form values
+      const formValues = form.getValues();
+      console.log("Form values:", formValues);
+
+      // Merge form values with any existing step1 data
+      step1Data = {
+        ...step1Data,
+        ...formValues,
+      };
+
+      // Also check if data exists in allBookingData directly
+      if (allBookingData?.step1) {
+        console.log("Found step1 in allBookingData:", allBookingData.step1);
+        step1Data = {
+          ...allBookingData.step1,
+          ...step1Data,
+        };
+      }
+    }
+
+    // Always try to get location IDs from URL params as fallback
+    const urlPickupId = searchParams?.get("pickup_location_id");
+    const urlReturnId = searchParams?.get("return_location_id");
+
+    if (!step1Data.pickupLocationId && !step1Data.pickup_location_id) {
+      if (urlPickupId) {
+        const pickupId = parseInt(urlPickupId);
+        step1Data.pickupLocationId = pickupId;
+        step1Data.pickup_location_id = pickupId;
+        console.log("Restored pickupLocationId from URL:", pickupId);
+        // Save it back to storage
+        bookingStorage.updateStep("step1", {
+          ...bookingStorage.getStep("step1") || {},
+          pickupLocationId: pickupId,
+          pickup_location_id: pickupId,
+        });
+      }
+    }
+
+    if (!step1Data.dropoffLocationId && !step1Data.return_location_id) {
+      if (urlReturnId) {
+        const returnId = parseInt(urlReturnId);
+        step1Data.dropoffLocationId = returnId;
+        step1Data.return_location_id = returnId;
+        console.log("Restored dropoffLocationId from URL:", returnId);
+        // Save it back to storage
+        bookingStorage.updateStep("step1", {
+          ...bookingStorage.getStep("step1") || {},
+          dropoffLocationId: returnId,
+          return_location_id: returnId,
+        });
+      } else if (step1Data.pickupLocationId) {
+        step1Data.dropoffLocationId = step1Data.pickupLocationId;
+        step1Data.return_location_id = step1Data.pickupLocationId;
+        console.log("Using pickupLocationId as dropoffLocationId (same store)");
+        // Save it back to storage
+        bookingStorage.updateStep("step1", {
+          ...bookingStorage.getStep("step1") || {},
+          dropoffLocationId: step1Data.pickupLocationId,
+          return_location_id: step1Data.pickupLocationId,
+        });
+      }
+    }
+
     const car = bookingStorage.getCar();
 
     console.log("Step1 data:", step1Data);
@@ -600,15 +878,64 @@ export default function Step1Rental({ onNext }) {
       }
     });
 
-    // Validate required fields
-    const pickupLocationId = parseInt(step1Data.pickupLocationId || step1Data.pickup_location_id || 0);
-    const returnLocationId = parseInt(step1Data.dropoffLocationId || step1Data.return_location_id || step1Data.pickupLocationId || step1Data.pickup_location_id || 0);
+    // Validate required fields - check multiple possible field names
+    // First try to get location IDs (not names)
+    let pickupLocationId = step1Data.pickupLocationId || step1Data.pickup_location_id || null;
+    let returnLocationId = step1Data.dropoffLocationId || step1Data.return_location_id || null;
 
-    if (!pickupLocationId || pickupLocationId === 0) {
+    // If IDs are missing, try to get from URL search params
+    if (!pickupLocationId) {
+      const urlPickupId = searchParams?.get("pickup_location_id");
+      if (urlPickupId) {
+        pickupLocationId = parseInt(urlPickupId);
+      }
+    }
+
+    if (!returnLocationId) {
+      const urlReturnId = searchParams?.get("return_location_id");
+      if (urlReturnId) {
+        returnLocationId = parseInt(urlReturnId);
+      } else if (pickupLocationId) {
+        // If same store, use pickup location as return location
+        returnLocationId = pickupLocationId;
+      }
+    }
+
+    // Parse to integer if not already
+    if (pickupLocationId && typeof pickupLocationId !== 'number') {
+      pickupLocationId = parseInt(pickupLocationId);
+    }
+    if (returnLocationId && typeof returnLocationId !== 'number') {
+      returnLocationId = parseInt(returnLocationId);
+    }
+
+    // Log for debugging
+    console.log("Location validation:", {
+      step1Data: {
+        pickupLocationId: step1Data.pickupLocationId,
+        pickup_location_id: step1Data.pickup_location_id,
+        dropoffLocationId: step1Data.dropoffLocationId,
+        return_location_id: step1Data.return_location_id,
+        pickupLocation: step1Data.pickupLocation,
+        dropoffLocation: step1Data.dropoffLocation,
+      },
+      urlParams: {
+        pickup_location_id: searchParams?.get("pickup_location_id"),
+        return_location_id: searchParams?.get("return_location_id"),
+      },
+      final: {
+        pickupLocationId,
+        returnLocationId,
+      }
+    });
+
+    if (!pickupLocationId || pickupLocationId === 0 || isNaN(pickupLocationId)) {
+      console.error("Missing pickup location ID. Step1 data:", step1Data);
       throw new Error("Pickup location is required. Please select a pickup location.");
     }
 
-    if (!returnLocationId || returnLocationId === 0) {
+    if (!returnLocationId || returnLocationId === 0 || isNaN(returnLocationId)) {
+      console.error("Missing return location ID. Step1 data:", step1Data);
       throw new Error("Return location is required. Please select a return location.");
     }
 
@@ -620,6 +947,23 @@ export default function Step1Rental({ onNext }) {
       throw new Error("Pickup and return dates/times are required. Please check your booking details.");
     }
 
+    // Calculate pricing breakdown for API payload
+    // Use stored values from grandTotal calculation or recalculate
+    // Note: base_rental_cost is fixed (not multiplied by days)
+    const baseRentalCost = step1Data.carBasePrice || carBasePriceTotal || 0;
+    const packageCost = step1Data.baseRateTotal || baseRateTotal || 0;
+    const protectionPlanCost = 0; // Currently not used, set to 0.00
+    const addonsCost = step1Data.addonsTotal || addonsTotal || 0;
+    const subtotal = step1Data.subtotal || (baseRentalCost + packageCost + addonsCost);
+    const taxPercentage = step1Data.taxPercentage || 10; // Default 10%
+    const taxAmount = step1Data.taxAmount || (subtotal * (taxPercentage / 100));
+    const totalAmount = step1Data.total_amount || step1Data.total || (subtotal + taxAmount);
+
+    // Format all amounts as strings with 2 decimal places (matching API format)
+    const formatAmount = (amount) => {
+      return parseFloat(amount || 0).toFixed(2);
+    };
+
     const bookingPayload = {
       car_id: car.id,
       pickup_location_id: pickupLocationId,
@@ -627,6 +971,15 @@ export default function Step1Rental({ onNext }) {
       pickup_datetime: pickupDatetime,
       return_datetime: returnDatetime,
       package_id: finalProtectionPlanId,
+      // Pricing breakdown fields (all as strings with 2 decimal places)
+      base_rental_cost: formatAmount(baseRentalCost),
+      package_cost: formatAmount(packageCost),
+      protection_plan_cost: formatAmount(protectionPlanCost),
+      addons_cost: formatAmount(addonsCost),
+      subtotal: formatAmount(subtotal),
+      tax_percentage: formatAmount(taxPercentage),
+      tax_amount: formatAmount(taxAmount),
+      total_amount: formatAmount(totalAmount),
       addons: addons, // Always include as array (can be empty)
     };
 
@@ -648,6 +1001,15 @@ export default function Step1Rental({ onNext }) {
     console.log("Protection plan ID:", finalProtectionPlanId);
     console.log("Pickup datetime:", pickupDatetime);
     console.log("Return datetime:", returnDatetime);
+    console.log("--- Pricing Breakdown ---");
+    console.log("Base Rental Cost:", bookingPayload.base_rental_cost);
+    console.log("Package Cost:", bookingPayload.package_cost);
+    console.log("Protection Plan Cost:", bookingPayload.protection_plan_cost);
+    console.log("Addons Cost:", bookingPayload.addons_cost);
+    console.log("Subtotal:", bookingPayload.subtotal);
+    console.log("Tax Percentage:", bookingPayload.tax_percentage);
+    console.log("Tax Amount:", bookingPayload.tax_amount);
+    console.log("Total Amount:", bookingPayload.total_amount);
     console.log("=============================");
 
     return bookingPayload;
@@ -669,12 +1031,19 @@ export default function Step1Rental({ onNext }) {
       const response = await createBookingMutation.mutateAsync(bookingData);
       console.log("Booking API response:", response);
 
-      // Store booking response
+      // Store booking response and total_amount
+      const bookingResponseData = response.data?.data || response.data || response;
+      const totalAmount = bookingResponseData.total_amount || bookingResponseData.total || null;
+
       bookingStorage.updateStep("step1", {
         ...bookingStorage.getStep("step1"),
-        bookingId: response.data?.id || response.id,
+        bookingId: bookingResponseData.id || response.data?.id || response.id,
         bookingResponse: response,
+        total_amount: totalAmount, // Store the total_amount from API
+        bookingData: bookingResponseData, // Store full booking data
       });
+
+      console.log("Stored booking total_amount:", totalAmount);
 
       console.log("Moving to next step...");
       // Move to next step
@@ -732,11 +1101,19 @@ export default function Step1Rental({ onNext }) {
       console.log("Booking data:", bookingData);
       const response = await createBookingMutation.mutateAsync(bookingData);
       console.log("Booking response:", response);
+      // Store booking response and total_amount
+      const bookingResponseData = response.data?.data || response.data || response;
+      const totalAmount = bookingResponseData.total_amount || bookingResponseData.total || null;
+
       bookingStorage.updateStep("step1", {
         ...bookingStorage.getStep("step1"),
-        bookingId: response.data?.id || response.id,
+        bookingId: bookingResponseData.id || response.data?.id || response.id,
         bookingResponse: response,
+        total_amount: totalAmount, // Store the total_amount from API
+        bookingData: bookingResponseData, // Store full booking data
       });
+
+      console.log("Stored booking total_amount:", totalAmount);
       onNext();
     } catch (error) {
       console.error("Booking error:", error);
@@ -760,6 +1137,16 @@ export default function Step1Rental({ onNext }) {
           handleSubmitDirect();
         })();
       }} className="space-y-6">
+        {/* Loading indicator while fetching addons data */}
+        {isLoadingAddons && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <p className="text-sm font-medium text-blue-800">
+              Loading latest addon prices and availability...
+            </p>
+          </div>
+        )}
+
         {/* Refundable Rate Banner */}
         <div className="bg-green-100 border border-green-200 rounded-lg p-4 text-center">
           <p className="text-sm font-medium text-green-800">
@@ -875,7 +1262,7 @@ export default function Step1Rental({ onNext }) {
               </div>
 
               {/* Promo Code */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              {/* <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Promo code"
@@ -885,23 +1272,31 @@ export default function Step1Rental({ onNext }) {
                     APPLY
                   </Button>
                 </div>
-              </div>
+              </div> */}
 
               {/* Daily Rate Info */}
               <div className="mt-4 pt-4 border-t border-gray-200 text-sm">
                 <div className="space-y-1">
                   {carBasePrice && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Car Price:</span>
+                      <span className="text-gray-600">Car Rental:</span>
                       <span className="text-gray-900 font-medium">
                         {carBasePriceTotal.toFixed(2)} € (fixed)
+                        {/* Commented out: Car rental is fixed, not per day
+                        {carBasePrice.price_per_day.toFixed(2)} €/day × {rentalDays} days = {carBasePriceTotal.toFixed(2)} €
+                        */}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Package Rate:</span>
                     <span className="text-gray-900 font-medium">
-                      {baseRatePrice.toFixed(2)} €/day
+                      {baseRatePrice.toFixed(2)} €/day × {rentalDays} days = {baseRateTotal.toFixed(2)} €
+                      {currentPackage?.has_discount && currentPackage.original_price_per_day && (
+                        <span className="text-green-600 text-xs ml-1">
+                          (Discounted from {parseFloat(currentPackage.original_price_per_day).toFixed(2)} €)
+                        </span>
+                      )}
                     </span>
                   </div>
                   {addonsTotal > 0 && (
@@ -913,6 +1308,18 @@ export default function Step1Rental({ onNext }) {
                     </div>
                   )}
                   <div className="flex justify-between pt-2 border-t border-gray-200">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="text-gray-900 font-medium">
+                      {(carBasePriceTotal + baseRateTotal + addonsTotal).toFixed(2)} €
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tax (10%):</span>
+                    <span className="text-gray-900 font-medium">
+                      {((carBasePriceTotal + baseRateTotal + addonsTotal) * 0.1).toFixed(2)} €
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-gray-200">
                     <span className="text-gray-900 font-semibold">Total:</span>
                     <span className="text-gray-900 font-bold">
                       {grandTotal.toFixed(2)} €
@@ -920,9 +1327,15 @@ export default function Step1Rental({ onNext }) {
                   </div>
                 </div>
                 <p className="text-gray-600 mt-2">
-                  {carBasePriceTotal > 0 && `${carBasePriceTotal.toFixed(0)} € car + `}
-                  {baseRateTotal.toFixed(0)} € package ({rentalDays} days)
+                  Calculation: {carBasePrice ? `${carBasePriceTotal.toFixed(2)} € car (fixed) + ` : ''}
+                  {baseRatePrice.toFixed(2)} €/day × {rentalDays} days = {baseRateTotal.toFixed(0)} € package
                   {addonsTotal > 0 && ` + ${addonsTotal.toFixed(2)} € addons`}
+                  {" = "}{(carBasePriceTotal + baseRateTotal + addonsTotal).toFixed(2)} € subtotal
+                  {" + "}{((carBasePriceTotal + baseRateTotal + addonsTotal) * 0.1).toFixed(2)} € tax
+                  {" = "}{grandTotal.toFixed(2)} € total
+                  {/* Commented out: Car rental per-day calculation
+                  {carBasePrice ? `${carBasePrice.price_per_day.toFixed(2)} €/day × ${rentalDays} days = ${carBasePriceTotal.toFixed(0)} € car + ` : ''}
+                  */}
                 </p>
               </div>
 

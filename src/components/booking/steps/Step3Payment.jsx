@@ -8,10 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, ArrowRight, CreditCard, CheckCircle2 } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import Image from "next/image";
 import { extrasData } from "@/lib/coverageData";
 import { useAddons } from "@/hooks/addons.hook";
+import { useCreatePaymentIntent } from "@/hooks/payment.hook";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const countries = [
     "Spain", "United States", "Canada", "United Kingdom", "Germany", "France",
@@ -20,7 +24,10 @@ const countries = [
 
 export default function Step3Payment({ onPrev, onNext }) {
     const form = useFormContext();
+    const router = useRouter();
     const { data: addonsData } = useAddons();
+    const createPaymentIntent = useCreatePaymentIntent();
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
     // Get rental days and selected car
     const rentalDays = useMemo(() => {
@@ -43,9 +50,23 @@ export default function Step3Payment({ onPrev, onNext }) {
         return bookingStorage.getCar();
     }, []);
 
+    // Get all step1 data - ensure we have complete access to all step1 fields
     const step1Data = useMemo(() => {
-        return bookingStorage.getStep("step1") || {};
+        const step1 = bookingStorage.getStep("step1") || {};
+        // Also get from bookingStorage.getData() to ensure we have all fields
+        const allData = bookingStorage.getData() || {};
+        return {
+            ...allData.step1,
+            ...step1,
+        };
     }, []);
+
+    // Get booking data from API response (source of truth)
+    const bookingData = useMemo(() => {
+        const bookingResponse = step1Data.bookingResponse || step1Data.bookingData || {};
+        const bookingResponseData = bookingResponse.data?.data || bookingResponse.data || bookingResponse;
+        return bookingResponseData;
+    }, [step1Data.bookingResponse, step1Data.bookingData]);
 
     const step2Data = useMemo(() => {
         return bookingStorage.getStep("step2") || {};
@@ -57,6 +78,11 @@ export default function Step3Payment({ onPrev, onNext }) {
 
     const selectedCoverage = useMemo(() => {
         return step1Data.coveragePlan || "premium";
+    }, [step1Data]);
+
+    // Get booking ID from step1 data
+    const bookingId = useMemo(() => {
+        return step1Data.bookingId || step1Data.booking_id || null;
     }, [step1Data]);
 
     // Format date for display
@@ -81,7 +107,7 @@ export default function Step3Payment({ onPrev, onNext }) {
         return timeString;
     };
 
-    // Calculate addons total
+    // Calculate addons total - matching Step1Rental logic
     const calculateAddonsTotal = () => {
         const selectedExtras = step1Data.extras || [];
         let addonsTotal = 0;
@@ -104,21 +130,28 @@ export default function Step3Payment({ onPrev, onNext }) {
             }
 
             let price = 0;
+            let label = extra.name;
+
             if (extraId === "childSeat") {
                 const quantities = step1Data.childSeatQuantities || {};
                 const totalChildSeats = (quantities.babySeat || 0) +
                     (quantities.childSeat || 0) +
                     (quantities.boosterSeat || 0);
                 if (totalChildSeats > 0) {
-                    price = apiAddon ? parseFloat(apiAddon.price_per_day || 0) : (extra.price || 0);
-                    price = price * totalChildSeats * rentalDays;
+                    // Use API price if available, otherwise use extrasData price
+                    const pricePerSeat = apiAddon ? parseFloat(apiAddon.price_per_day || 0) : (extra.price || 0);
+                    // Child seats are per_day - multiply by quantity and days
+                    price = pricePerSeat * totalChildSeats * rentalDays;
+                    label = `${extra.name} (${totalChildSeats}x)`;
                     addonsList.push({
-                        name: extra.name,
+                        name: label,
                         price: price,
                         quantity: totalChildSeats
                     });
+                    addonsTotal += price;
                 }
             } else if (extraId === "foundationDonation") {
+                // Donations are fixed amounts, not multiplied by days
                 const donation = step1Data.donationAmount || 0;
                 price = parseFloat(donation) || 0;
                 if (price > 0) {
@@ -126,31 +159,74 @@ export default function Step3Payment({ onPrev, onNext }) {
                         name: extra.name,
                         price: price
                     });
+                    addonsTotal += price;
                 }
             } else {
-                price = apiAddon
-                    ? (apiAddon.pricing_type === "per_day"
-                        ? parseFloat(apiAddon.price_per_day || 0) * rentalDays
-                        : parseFloat(apiAddon.price_per_booking || apiAddon.price_per_day || 0))
-                    : (extra.pricingType === "per_day"
-                        ? (extra.price || 0) * rentalDays
-                        : (extra.price || 0));
-                if (price > 0) {
+                // All other addons are multiplied by days (matching Step1Rental)
+                const pricePerDay = apiAddon ? parseFloat(apiAddon.price_per_day || 0) : (extra.price || 0);
+                if (pricePerDay > 0) {
+                    price = pricePerDay * rentalDays;
                     addonsList.push({
                         name: extra.name,
                         price: price
                     });
+                    addonsTotal += price;
                 }
             }
-            addonsTotal += price;
         });
 
         return { addonsTotal, addonsList };
     };
 
-    // Calculate total price
-    const calculateTotal = () => {
-        // Get package price from selected car packages
+    // Calculate car base price (fixed, not per day) - matching Step1Rental
+    const carBasePrice = useMemo(() => {
+        if (!selectedCar) return 0;
+        const carPrices = selectedCar._apiData?.model?.car_prices || selectedCar._apiData?.car_prices;
+        if (carPrices && Array.isArray(carPrices) && carPrices.length > 0) {
+            const activePrice = carPrices.find(p => p.is_active !== false) || carPrices[0];
+            return activePrice.price_per_day || 0;
+        }
+        return selectedCar.price || 0;
+    }, [selectedCar]);
+
+    // Get pricing from booking API response (source of truth)
+    const getBookingPricing = () => {
+        // If we have booking data from API, use it
+        if (bookingData && Object.keys(bookingData).length > 0) {
+            const baseRentalCost = parseFloat(bookingData.base_rental_cost || 0);
+            const packageCost = parseFloat(bookingData.package_cost || 0);
+            const addonsCost = parseFloat(bookingData.addons_cost || 0);
+            const subtotal = parseFloat(bookingData.subtotal || 0);
+            const taxAmount = parseFloat(bookingData.tax_amount || 0);
+            const totalAmount = parseFloat(bookingData.total_amount || 0);
+
+            // Get addons list from booking API
+            const bookingAddons = bookingData.addons || [];
+            const addonsList = bookingAddons.map(bookingAddon => ({
+                name: bookingAddon.addon?.name || "Unknown",
+                price: parseFloat(bookingAddon.total_cost || 0),
+                quantity: bookingAddon.quantity || 1,
+                pricePerDay: parseFloat(bookingAddon.price_at_booking || 0),
+            }));
+
+            // Calculate package price per day
+            const baseRatePrice = rentalDays > 0 ? packageCost / rentalDays : 0;
+
+            return {
+                carBasePrice: baseRentalCost,
+                baseRatePrice: baseRatePrice,
+                baseRateTotal: packageCost,
+                addonsTotal: addonsCost,
+                addonsList: addonsList,
+                subtotal: subtotal,
+                taxAmount: taxAmount,
+                taxPercentage: parseFloat(bookingData.tax_percentage || 0),
+                total: totalAmount,
+                fromBookingAPI: true, // Flag to indicate this is from API
+            };
+        }
+
+        // Fallback to manual calculation if booking data not available
         const selectedCar = bookingStorage.getCar();
         const carPackages = selectedCar?.packages || [];
         const currentPackage = carPackages.find(pkg => {
@@ -182,16 +258,53 @@ export default function Step3Payment({ onPrev, onNext }) {
         const baseRateTotal = baseRatePrice * rentalDays;
         const { addonsTotal, addonsList } = calculateAddonsTotal();
 
+        // Grand total = car base price (fixed) + package price + addons
+        const calculatedTotal = carBasePrice + baseRateTotal + addonsTotal;
+
+        // Use total_amount from booking API if available
+        const bookingTotalAmount = step1Data.total_amount;
+        let finalTotal = calculatedTotal;
+
+        if (bookingTotalAmount) {
+            finalTotal = parseFloat(bookingTotalAmount);
+        } else {
+            const storedTotal = step1Data.total;
+            if (storedTotal && storedTotal > 0) {
+                finalTotal = storedTotal;
+            }
+        }
+
         return {
+            carBasePrice,
             baseRatePrice,
             baseRateTotal,
             addonsTotal,
             addonsList,
-            total: baseRateTotal + addonsTotal,
+            subtotal: finalTotal,
+            taxAmount: 0,
+            taxPercentage: 0,
+            total: finalTotal,
+            fromBookingAPI: false,
         };
     };
 
-    const { baseRatePrice, baseRateTotal, addonsTotal, addonsList, total } = calculateTotal();
+    // Calculate total price - use booking API data if available
+    const calculateTotal = () => {
+        return getBookingPricing();
+    };
+
+    const {
+        carBasePrice: displayCarBasePrice,
+        baseRatePrice,
+        baseRateTotal,
+        addonsTotal,
+        addonsList,
+        subtotal,
+        taxAmount,
+        taxPercentage,
+        total,
+        fromBookingAPI
+    } = calculateTotal();
     const installmentAmount = (total / 3).toFixed(2);
 
     // Prefill form with step 2 data
@@ -212,11 +325,151 @@ export default function Step3Payment({ onPrev, onNext }) {
         }
     }, [step2Data, form]);
 
-    const handleNext = (e) => {
+    // Handle Stripe payment
+    const handleStripePayment = async () => {
+        if (!bookingId) {
+            toast.error("Booking ID is missing. Please complete the booking first.");
+            console.error("Booking ID is missing for payment intent creation.");
+            return;
+        }
+
+        setIsProcessingPayment(true);
+        console.log("Initiating Stripe payment for booking ID:", bookingId);
+        console.log("All Step1 data available:", step1Data);
+
+        try {
+            // Get the total_amount from booking API response (source of truth)
+            // This matches the backend calculation: subtotal + tax_amount
+            let paymentTotal = null;
+
+            // Priority 1: Use total_amount from booking API response (most accurate)
+            if (step1Data.total_amount) {
+                paymentTotal = parseFloat(step1Data.total_amount);
+                console.log("Using total_amount from booking API response:", paymentTotal);
+            }
+            // Priority 2: Use calculated total from current calculation (includes tax)
+            else if (total && total > 0) {
+                paymentTotal = parseFloat(total);
+                console.log("Using calculated total from Step3 (includes tax):", paymentTotal);
+            }
+            // Priority 3: Use stored total from Step1 (if it includes tax)
+            else if (step1Data.total && step1Data.total > 0) {
+                paymentTotal = parseFloat(step1Data.total);
+                console.log("Using stored total from Step1:", paymentTotal);
+            }
+            // Priority 4: Recalculate from scratch
+            else {
+                const { total: recalculatedTotal } = calculateTotal();
+                paymentTotal = recalculatedTotal;
+                console.log("Using recalculated total:", paymentTotal);
+            }
+
+            // Ensure we have a valid total
+            if (!paymentTotal || paymentTotal <= 0 || isNaN(paymentTotal)) {
+                throw new Error(`Invalid payment total: ${paymentTotal}. Please check your booking details.`);
+            }
+
+            // Convert to cents (Stripe uses cents, so multiply by 100)
+            const amountInCents = Math.round(paymentTotal * 100);
+
+            console.log("=== PAYMENT AMOUNT DEBUG ===");
+            console.log("Final Payment Total:", paymentTotal);
+            console.log("Amount in Cents:", amountInCents);
+            console.log("Booking ID:", bookingId);
+            console.log("Total Amount from Booking API:", step1Data.total_amount);
+            console.log("Stored Total from Step1:", step1Data.total);
+            console.log("Component Total:", total);
+            console.log("Car Base Price:", displayCarBasePrice);
+            console.log("Base Rate Total:", baseRateTotal);
+            console.log("Addons Total:", addonsTotal);
+            console.log("===========================");
+
+            // Create success and cancel URLs
+            const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+            const successUrl = `${baseUrl}/booking/payment/success?booking_id=${bookingId}`;
+            const cancelUrl = `${baseUrl}/booking/payment/cancel?booking_id=${bookingId}`;
+
+            // Create payment intent with amount - send in multiple formats to ensure backend receives it
+            // Include all step1 data for backend reference
+            const paymentPayload = {
+                booking_id: bookingId,
+                // Amount fields (multiple formats for backend compatibility)
+                amount: paymentTotal, // Primary: amount in dollars
+                total: paymentTotal, // Alternative parameter name
+                total_amount: paymentTotal, // Another alternative (matches API response field)
+                price: paymentTotal, // Another alternative
+                amount_cents: amountInCents, // Amount in cents
+                total_cents: amountInCents, // Total in cents
+                // URLs
+                success_url: successUrl,
+                cancel_url: cancelUrl,
+                // Include all step1 data for backend reference
+                step1_data: {
+                    // Pricing breakdown
+                    subtotal: step1Data.subtotal || (subtotal || 0),
+                    tax_amount: step1Data.taxAmount || (taxAmount || 0),
+                    tax_percentage: step1Data.taxPercentage || (taxPercentage || 10),
+                    base_rental_cost: step1Data.carBasePrice || (displayCarBasePrice || 0),
+                    package_cost: step1Data.baseRateTotal || (baseRateTotal || 0),
+                    addons_cost: step1Data.addonsTotal || (addonsTotal || 0),
+                    // Booking details
+                    pickup_date: step1Data.pickupDate,
+                    dropoff_date: step1Data.dropoffDate,
+                    pickup_location_id: step1Data.pickupLocationId || step1Data.pickup_location_id,
+                    return_location_id: step1Data.dropoffLocationId || step1Data.return_location_id,
+                    protection_plan: step1Data.protectionPlan,
+                    extras: step1Data.extras || [],
+                    // Full step1 data (for complete reference)
+                    full_step1: step1Data,
+                },
+            };
+
+            console.log("=== PAYMENT PAYLOAD BEING SENT ===");
+            console.log(JSON.stringify(paymentPayload, null, 2));
+            console.log("Amount field value:", paymentPayload.amount);
+            console.log("Total field value:", paymentPayload.total);
+            console.log("=================================");
+
+            const response = await createPaymentIntent.mutateAsync(paymentPayload);
+
+            // If response contains a redirect URL (Stripe Checkout), redirect to it
+            if (response?.data?.checkout_url || response?.checkout_url) {
+                window.location.href = response.data?.checkout_url || response.checkout_url;
+            } else if (response?.data?.client_secret) {
+                // If using Stripe Elements, handle client_secret
+                // You can integrate Stripe Elements here if needed
+                console.log("Stripe client secret received:", response.data.client_secret);
+                alert("Payment intent created. Please integrate Stripe Elements for payment processing.");
+            } else {
+                // If payment is successful directly
+                console.log("Payment successful:", response);
+                onNext();
+            }
+        } catch (error) {
+            console.error("Payment processing error in handleStripePayment:", error);
+            const errorMessage = error.message ||
+                error.response?.data?.message ||
+                error.response?.data?.error ||
+                "Failed to process payment. Please try again.";
+            toast.error(`Payment Error: ${errorMessage}\n\nPlease contact support if this issue persists.`);
+        } finally {
+            setIsProcessingPayment(false);
+        }
+    };
+
+    const handleNext = async (e) => {
         e.preventDefault();
-        // Force move to next step regardless of validation
-        // Form values are automatically saved via form.watch() in BookingRoot
-        onNext();
+
+        const paymentMethod = form.watch("paymentMethod");
+
+        // If credit card is selected, process Stripe payment
+        if (paymentMethod === "credit") {
+            await handleStripePayment();
+        } else {
+            // For other payment methods (Bizum, Scalapay, Klarna), just move to next step
+            // Form values are automatically saved via form.watch() in BookingRoot
+            onNext();
+        }
     };
 
     return (
@@ -308,6 +561,9 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 <p className="text-xl font-bold text-gray-900">
                                     {total.toFixed(2)} €
                                 </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Total includes car, package, and addons
+                                </p>
                             </div>
 
                             {/* Summary of Your Rental */}
@@ -316,11 +572,21 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     SUMMARY OF YOUR RENTAL
                                 </h4>
                                 <div className="space-y-2 text-sm">
+                                    {displayCarBasePrice > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-700">Car Rental</span>
+                                            <span className="text-gray-900 font-medium">
+                                                {displayCarBasePrice.toFixed(2)} €
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between">
                                         <span className="text-gray-700">
                                             {selectedPackage === "premium" ? "Premium" : selectedPackage === "smart" ? "Smart" : selectedPackage === "lite" ? "Lite" : "Standard"} Package
                                         </span>
-                                        <span className="text-green-600 font-medium">INCLUDED</span>
+                                        <span className="text-gray-900 font-medium">
+                                            {baseRateTotal.toFixed(2)} €
+                                        </span>
                                     </div>
                                     {addonsList && addonsList.length > 0 && (
                                         <div className="pt-2 border-t border-purple-200 space-y-1">
@@ -329,10 +595,28 @@ export default function Step3Payment({ onPrev, onNext }) {
                                                     <span className="text-gray-700">{addon.name}</span>
                                                     <span className="text-gray-900 font-medium">
                                                         {addon.price.toFixed(2)} €
-                                                        {addon.quantity && ` (x${addon.quantity})`}
+                                                        {addon.quantity && addon.quantity > 1 && ` (x${addon.quantity})`}
                                                     </span>
                                                 </div>
                                             ))}
+                                        </div>
+                                    )}
+                                    {fromBookingAPI && subtotal > 0 && (
+                                        <div className="pt-2 border-t border-purple-200">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-700">Subtotal</span>
+                                                <span className="text-gray-900 font-medium">
+                                                    {subtotal.toFixed(2)} €
+                                                </span>
+                                            </div>
+                                            {taxAmount > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-700">Tax ({taxPercentage}%)</span>
+                                                    <span className="text-gray-900 font-medium">
+                                                        {taxAmount.toFixed(2)} €
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -341,8 +625,16 @@ export default function Step3Payment({ onPrev, onNext }) {
                             {/* Price Breakdown */}
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
                                 <div className="space-y-2 text-sm">
+                                    {displayCarBasePrice > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Car Price:</span>
+                                            <span className="text-gray-900 font-medium">
+                                                {displayCarBasePrice.toFixed(2)} € {fromBookingAPI ? "" : "(fixed)"}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">Base Rate:</span>
+                                        <span className="text-gray-600">Package Rate:</span>
                                         <span className="text-gray-900 font-medium">
                                             {baseRatePrice.toFixed(2)} €/day
                                         </span>
@@ -355,6 +647,22 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </span>
                                         </div>
                                     )}
+                                    {fromBookingAPI && subtotal > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Subtotal:</span>
+                                            <span className="text-gray-900 font-medium">
+                                                {subtotal.toFixed(2)} €
+                                            </span>
+                                        </div>
+                                    )}
+                                    {fromBookingAPI && taxAmount > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Tax ({taxPercentage}%):</span>
+                                            <span className="text-gray-900 font-medium">
+                                                {taxAmount.toFixed(2)} €
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="pt-2 border-t border-gray-200 flex justify-between">
                                         <span className="text-gray-900 font-bold">Total:</span>
                                         <span className="text-gray-900 font-bold text-lg">
@@ -362,8 +670,15 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         </span>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        {baseRatePrice.toFixed(0)} € base ({rentalDays} {rentalDays === 1 ? "day" : "days"})
-                                        {addonsTotal > 0 && ` + ${addonsTotal.toFixed(2)} € addons`}
+                                        {fromBookingAPI ? (
+                                            `From booking API - ${displayCarBasePrice.toFixed(0)} € car + ${baseRateTotal.toFixed(0)} € package + ${addonsTotal.toFixed(0)} € addons`
+                                        ) : (
+                                            <>
+                                                {displayCarBasePrice > 0 && `${displayCarBasePrice.toFixed(0)} € car + `}
+                                                {baseRateTotal.toFixed(0)} € package ({rentalDays} {rentalDays === 1 ? "day" : "days"})
+                                                {addonsTotal > 0 && ` + ${addonsTotal.toFixed(2)} € addons`}
+                                            </>
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -638,7 +953,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 />
 
                                 {/* Bizum */}
-                                <FormField
+                                {/* <FormField
                                     control={form.control}
                                     name="paymentMethod"
                                     render={({ field }) => (
@@ -664,7 +979,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     )}
                                 />
 
-                                {/* Scalapay */}
+                             
                                 <FormField
                                     control={form.control}
                                     name="paymentMethod"
@@ -693,7 +1008,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     )}
                                 />
 
-                                {/* Klarna */}
+                              
                                 <FormField
                                     control={form.control}
                                     name="paymentMethod"
@@ -720,11 +1035,11 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </FormControl>
                                         </FormItem>
                                     )}
-                                />
+                                /> */}
                             </div>
 
                             {/* Credit Card Details (shown when credit card is selected) */}
-                            {form.watch("paymentMethod") === "credit" && (
+                            {/* {form.watch("paymentMethod") === "credit" && (
                                 <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
                                     <FormField
                                         control={form.control}
@@ -788,7 +1103,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         />
                                     </div>
                                 </div>
-                            )}
+                            )} */}
                         </div>
 
                         {/* Navigation Buttons */}
@@ -804,10 +1119,20 @@ export default function Step3Payment({ onPrev, onNext }) {
                             </Button>
                             <Button
                                 type="submit"
-                                className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-8 py-6 text-lg"
+                                disabled={isProcessingPayment || createPaymentIntent.isPending}
+                                className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-black font-semibold px-8 py-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                CONTINUE
-                                <ArrowRight className="w-5 h-5" />
+                                {isProcessingPayment || createPaymentIntent.isPending ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        CONTINUE
+                                        <ArrowRight className="w-5 h-5" />
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>

@@ -298,10 +298,17 @@ const HeroSections = () => {
   };
 
   const handleSearch = () => {
+    // Validate required fields
     if (!pickupDate || !returnDate || !pickupLocationId) {
+      console.warn("Missing required search fields:", {
+        pickupDate: !!pickupDate,
+        returnDate: !!returnDate,
+        pickupLocationId: !!pickupLocationId,
+      });
       return;
     }
     if (!sameStore && !returnLocationId) {
+      console.warn("Return location is required when not using same store");
       return;
     }
 
@@ -317,6 +324,7 @@ const HeroSections = () => {
     const formattedPickupTime = pickupTime || "12:00";
     const formattedReturnTime = returnTime || "12:00";
 
+    console.log("=== SEARCH API CALL ===");
     console.log("Search Parameters:", {
       pickup_location_id: finalPickupId,
       return_location_id: finalReturnId,
@@ -325,6 +333,8 @@ const HeroSections = () => {
       return_date: formattedReturnDate,
       return_time: formattedReturnTime,
     });
+    console.log("API Endpoint: /api/v1/cars/search");
+    console.log("======================");
 
     // Store in booking storage
     const toISO = (dateObj, timeStr) => {
@@ -347,28 +357,27 @@ const HeroSections = () => {
       pickupLocationId: finalPickupId,
       dropoffLocation: sameStore ? pickupLocation : returnLocation,
       dropoffLocationId: finalReturnId,
+      pickup_time: formattedPickupTime,
+      return_time: formattedReturnTime,
       requirements: "",
       protectionPlan: "basic",
       extras: [],
     });
 
     // Navigate to cars page with search parameters
+    // The CarsCardSection component will automatically call the search API via useSearchCars hook
     const searchParams = new URLSearchParams({
       pickup_location_id: finalPickupId.toString(),
+      return_location_id: finalReturnId.toString(), // Always include return_location_id
       pickup_date: formattedPickupDate,
       return_date: formattedReturnDate,
     });
 
-    // Always include return_location_id (use pickup location if same store)
-    searchParams.append("return_location_id", finalReturnId.toString());
+    // Include times (always include them, even if default 12:00, for consistency)
+    searchParams.append("pickup_time", formattedPickupTime);
+    searchParams.append("return_time", formattedReturnTime);
 
-    if (formattedPickupTime !== "12:00") {
-      searchParams.append("pickup_time", formattedPickupTime);
-    }
-    if (formattedReturnTime !== "12:00") {
-      searchParams.append("return_time", formattedReturnTime);
-    }
-
+    console.log("Navigating to /cars with search params:", searchParams.toString());
     router.push(`/cars?${searchParams.toString()}`);
   };
 

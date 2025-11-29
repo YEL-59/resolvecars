@@ -28,9 +28,14 @@ export const bookingStorage = {
   // Update specific step data
   updateStep: (step, stepData) => {
     const currentData = bookingStorage.getData() || {};
+    // Merge with existing step data to preserve all fields
+    const existingStepData = currentData[step] || {};
     const updatedData = {
       ...currentData,
-      [step]: stepData,
+      [step]: {
+        ...existingStepData, // Preserve existing step data
+        ...stepData, // Override with new data
+      },
       lastUpdated: new Date().toISOString()
     };
     bookingStorage.setData(updatedData);

@@ -12,9 +12,11 @@ const transformCarData = (apiCar) => {
   // Get the first package (or premium if available) for default pricing
   const defaultPackage = packages.find(p => p.package_type === "premium") || packages[0] || {};
   
-  // Use rental_calculation from package if available (from search API), otherwise use price_per_day
+  // Use rental_calculation from package if available (from search API)
+  // For display and filtering, use daily_rate (per day), not base_rental_cost (total)
   const packageRentalCalc = defaultPackage.rental_calculation;
-  const basePrice = packageRentalCalc?.base_rental_cost || packageRentalCalc?.daily_rate || defaultPackage.price_per_day || 0;
+  // Use daily_rate for price (per day), not base_rental_cost (total for all days)
+  const basePrice = packageRentalCalc?.daily_rate || defaultPackage.price_per_day || 0;
   
   // Combine all features from all packages
   const allFeatures = packages.flatMap(pkg => pkg.features || []);
@@ -40,6 +42,7 @@ const transformCarData = (apiCar) => {
     description: `${model.make || ""} ${model.model || ""} - ${carType.description || "Premium rental car"}`.trim(),
     location: apiCar.current_location?.name || "Airport Terminal",
     pickupInfo: apiCar.current_location?.address || "Rental Car Center",
+    status: apiCar.status || null, // Preserve status for availability checking
     available: apiCar.status === "available" ? "Available 24/7" : "Unavailable",
     availability: apiCar.availability || null,
     available_date: apiCar.available_date || null, // Preserve available_date for availability checking
@@ -87,8 +90,22 @@ export const useCars = (params = {}) => {
       const res = await axiosPublic.get(`/cars?${queryParams.toString()}`);
       const responseData = res.data?.data || res.data;
       
-      // Transform the cars data
-      const transformedCars = (responseData.data || []).map(transformCarData);
+      // Filter cars: Only show cars with status "available"
+      // Hide "rented" (confirmed/active bookings) and other statuses like "booked"
+      const carsArray = responseData.data || [];
+      const availableCars = carsArray.filter(car => {
+        const status = car.status?.toLowerCase();
+        const isAvailable = status === "available";
+        if (!isAvailable) {
+          console.log(`[useCars] Filtering out car ID ${car.id} with status: "${car.status}" (Rented=confirmed/active, Available=available for booking)`);
+        }
+        return isAvailable;
+      });
+      
+      console.log(`[useCars] Total cars from API: ${carsArray.length}, Available cars: ${availableCars.length}`);
+      
+      // Transform the cars data (only available cars)
+      const transformedCars = availableCars.map(transformCarData);
       
       return {
         cars: transformedCars,
@@ -96,9 +113,9 @@ export const useCars = (params = {}) => {
           current_page: responseData.current_page || 1,
           last_page: responseData.last_page || 1,
           per_page: responseData.per_page || per_page,
-          total: responseData.total || 0,
-          from: responseData.from || 0,
-          to: responseData.to || 0,
+          total: transformedCars.length, // Use filtered count instead of API total
+          from: transformedCars.length > 0 ? (responseData.from || 1) : 0,
+          to: transformedCars.length,
           links: responseData.links || [],
           next_page_url: responseData.next_page_url,
           prev_page_url: responseData.prev_page_url,
@@ -155,11 +172,11 @@ export const useSearchCars = (params = {}) => {
         queryParams.append("return_location_id", finalReturnLocationId.toString());
       }
       
-      // Include times if provided (default to 12:00)
-      if (pickup_time && pickup_time !== "12:00") {
+      // Include times (always include them for API consistency)
+      if (pickup_time) {
         queryParams.append("pickup_time", pickup_time);
       }
-      if (return_time && return_time !== "12:00") {
+      if (return_time) {
         queryParams.append("return_time", return_time);
       }
 
@@ -170,29 +187,58 @@ export const useSearchCars = (params = {}) => {
         }
       });
 
-      const res = await axiosPublic.get(`/cars/search?${queryParams.toString()}`);
+      const apiUrl = `/cars/search?${queryParams.toString()}`;
+      console.log("=== SEARCH API CALL ===");
+      console.log("API URL:", apiUrl);
+      console.log("Query params:", queryParams.toString());
+      
+      const res = await axiosPublic.get(apiUrl);
+      
+      console.log("Raw API Response:", res.data);
       
       // Handle response structure: { success: true, data: [...], meta: {...} }
       const responseData = res.data;
       const carsArray = responseData?.data || [];
       const meta = responseData?.meta || {};
 
-      // Transform the cars data
-      const transformedCars = carsArray.map(transformCarData);
+      console.log("Cars array from API (before filtering):", carsArray);
+      console.log("Cars array length (before filtering):", carsArray.length);
+      console.log("Meta:", meta);
+
+      // Filter cars: Only show cars with status "available"
+      // Hide "rented" (confirmed/active bookings) and other statuses like "booked"
+      const availableCars = carsArray.filter(car => {
+        const status = car.status?.toLowerCase();
+        const isAvailable = status === "available";
+        if (!isAvailable) {
+          console.log(`[Search API] Filtering out car ID ${car.id} with status: "${car.status}" (Rented=confirmed/active, Available=available for booking)`);
+        }
+        return isAvailable;
+      });
+
+      console.log("Available cars (after filtering):", availableCars);
+      console.log("Available cars length (after filtering):", availableCars.length);
+
+      // Transform the cars data (only available cars)
+      const transformedCars = availableCars.map(transformCarData);
+      
+      console.log("Transformed cars:", transformedCars);
+      console.log("Transformed cars length:", transformedCars.length);
+      console.log("======================");
 
       return {
         cars: transformedCars,
         meta: {
-          total_cars: meta.total_cars || transformedCars.length,
+          total_cars: transformedCars.length, // Use filtered count
           rental_period: meta.rental_period || {},
           filters_applied: meta.filters_applied || {},
         },
         pagination: {
           current_page: 1,
           last_page: 1,
-          per_page: carsArray.length,
-          total: meta.total_cars || transformedCars.length,
-          from: 1,
+          per_page: transformedCars.length, // Use filtered count
+          total: transformedCars.length, // Use filtered count
+          from: transformedCars.length > 0 ? 1 : 0,
           to: transformedCars.length,
         },
       };

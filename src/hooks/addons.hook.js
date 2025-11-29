@@ -13,8 +13,9 @@ export const useAddons = () => {
       const addons = res.data?.data || res.data || [];
       return Array.isArray(addons) ? addons : [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 2 * 60 * 1000, // 2 minutes (reduced from 5 to ensure fresher data)
+    refetchOnWindowFocus: true, // Enable refetch on window focus
+    refetchOnMount: true, // Always refetch when component mounts
   });
 };
 

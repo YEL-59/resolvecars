@@ -115,7 +115,10 @@ export default function BookingRoot() {
         newsletterSubscribe,
       } = values;
 
+      // Preserve existing step1 data (especially location IDs) when updating
+      const existingStep1 = bookingStorage.getStep("step1") || {};
       bookingStorage.updateStep("step1", {
+        ...existingStep1, // Preserve all existing data including location IDs
         pickupDate,
         dropoffDate,
         pickupLocation,
