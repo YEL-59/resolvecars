@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -49,7 +49,10 @@ const schema = z.object({
 export default function BookingRoot() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
   const step = useMemo(() => {
     if (!pathname) return 1;
     if (pathname.includes("step1")) return 1;
@@ -61,10 +64,25 @@ export default function BookingRoot() {
 
   const [selectedCar, setSelectedCar] = useState(null);
 
+  // Check if this is a new booking (from URL param or no car selected)
+  const isNewBooking = useMemo(() => {
+    // Check URL parameter for "new" flag
+    const newParam = searchParams?.get("new");
+    if (newParam === "true") return true;
+
+    // If no car is selected, treat as new booking
+    const car = bookingStorage.getCar();
+    return !car;
+  }, [searchParams]);
+
   const form = useForm({
     resolver: zodResolver(schema),
     mode: "onChange",
     defaultValues: useMemo(() => {
+      // If new booking, return empty defaults
+      if (isNewBooking) {
+        return {};
+      }
       const all = bookingStorage.getData() || {};
       return {
         // flatten known steps for a unified form state
@@ -73,18 +91,44 @@ export default function BookingRoot() {
         ...(all.step3 || {}),
         ...(all.step4 || {}),
       };
-    }, []),
+    }, [isNewBooking]),
   });
 
-  // mark mounted and load selected car
+  // Initialize on mount - clear old data if new booking, or load existing data
   useEffect(() => {
-    setMounted(true);
-    const car = bookingStorage.getCar();
-    setSelectedCar(car || null);
-  }, []);
+    console.log("BookingRoot: Initializing, isNewBooking:", isNewBooking);
 
-  // persist on change (subscribe once)
+    if (isNewBooking) {
+      // Clear all previous booking data for new booking
+      console.log("BookingRoot: Clearing previous booking data for new booking");
+      bookingStorage.clear();
+
+      // Reset form to empty values
+      form.reset({});
+      setSelectedCar(null);
+    } else {
+      // Load existing booking data
+      const car = bookingStorage.getCar();
+      setSelectedCar(car || null);
+
+      // Load form data from storage
+      const all = bookingStorage.getData() || {};
+      form.reset({
+        ...(all.step1 || {}),
+        ...(all.step2 || {}),
+        ...(all.step3 || {}),
+        ...(all.step4 || {}),
+      });
+    }
+
+    setMounted(true);
+    setIsInitialized(true);
+  }, [isNewBooking, form]);
+
+  // persist on change (subscribe once, but only after initialization)
   useEffect(() => {
+    if (!isInitialized) return; // Don't watch until initialized
+
     const subscription = form.watch((values) => {
       const {
         pickupDate,
@@ -151,14 +195,12 @@ export default function BookingRoot() {
       });
     });
     return () => subscription.unsubscribe();
-    // subscribe once; the form instance doesn't change after mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isInitialized, form]);
 
   const goTo = (target) => router.push(`/booking/step${target}`);
 
-  if (!mounted) {
-    return null; // avoid SSR/client mismatch
+  if (!mounted || !isInitialized) {
+    return null; // avoid SSR/client mismatch and wait for initialization
   }
 
   return (

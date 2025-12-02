@@ -83,11 +83,11 @@ export default function Navbar() {
   ];
   const pathname = usePathname();
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto flex items-center justify-between py-3 px-4">
+    <nav className="bg-[#ffffff] sticky top-0 z-50">
+      <div className="container mx-auto flex items-center justify-between p-2.5">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <div className="relative w-20 h-10">
+          <div className="relative w-32 h-16">
             <Image
               src="/assets/logo.png"
               alt="ResolveCars Logo"
@@ -98,14 +98,16 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation Links */}
-        <div className="hidden md:flex items-center space-x-6">
+        <div className="hidden md:flex items-center justify-center space-x-6">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative transition-all duration-200 group ${isActive ? "text-[#F5807C] font-semibold" : "text-black"
+                className={`relative transition-all duration-200 group ${isActive
+                  ? "text-[#F5807C] font-medium"
+                  : "text-black font-medium"
                   }`}
               >
                 <span>{link.label}</span>
@@ -132,9 +134,7 @@ export default function Navbar() {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback>
-                      {userInitials}
-                    </AvatarFallback>
+                    <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                   <span className="hidden md:inline text-sm font-medium text-gray-800">
                     {userName}
@@ -145,9 +145,7 @@ export default function Navbar() {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{userName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {userEmail}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{userEmail}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -161,9 +159,9 @@ export default function Navbar() {
                     <Car className="mr-2 h-4 w-4" /> My Bookings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                {/* <DropdownMenuItem>
                   <Settings className="mr-2 h-4 w-4" /> Settings
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" /> Log Out
@@ -209,7 +207,11 @@ export default function Navbar() {
                   </div>
                   <div className="flex flex-col gap-4">
                     {navLinks.map((link) => (
-                      <Link key={link.href} href={link.href} className="text-base text-gray-800">
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="text-base text-gray-800"
+                      >
                         {link.label}
                       </Link>
                     ))}
@@ -218,13 +220,13 @@ export default function Navbar() {
                     {isLoggedIn && user ? (
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            {userInitials}
-                          </AvatarFallback>
+                          <AvatarFallback>{userInitials}</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="text-sm font-medium">{userName}</p>
-                          <p className="text-xs text-muted-foreground">{userEmail}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {userEmail}
+                          </p>
                         </div>
                       </div>
                     ) : (
@@ -242,7 +244,12 @@ export default function Navbar() {
               </Sheet>
             ) : (
               // Fallback during SSR to prevent hydration mismatch
-              <Button variant="ghost" size="icon" aria-label="Open menu" disabled>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Open menu"
+                disabled
+              >
                 <Menu className="w-5 h-5" />
               </Button>
             )}

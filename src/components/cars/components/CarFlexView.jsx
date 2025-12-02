@@ -2,10 +2,25 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Plane, Users, Car as CarIcon, Info, Check } from "lucide-react";
+import { Users, Info, Check, Calendar as CalendarIcon, Star } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useRouter } from "next/navigation";
 import { isCarUnavailable, getCarPriceForDateRange, getCarPriceForDate, getCarPriceForCurrentDate, transformPackageToPlan } from "../helpers/carHelpers";
+
+// Format date for display (e.g., "Nov 26, 2025")
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
 
 export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }) {
   const router = useRouter();
@@ -68,8 +83,71 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
 
         // Get transmission display (M for manual, A for automatic)
         const transmissionDisplay = (car.transmission || car.model?.transmission_type) === "manual" ? "M" : "A";
-        // Calculate doors (assuming 5 for sedans/SUVs, 3 for coupes)
-        const doors = car.type === "SPORTS" ? 3 : 5;
+        // Get fuel type
+        const fuelType = car.fuel || car.fuelType || car.model?.fuel_type || "gasoline";
+        // Get car year
+        const carYear = car.year || car.model?.year;
+        // Get car name
+        const carName = car.name || `${car.model?.make || ""} ${car.model?.model || ""}`.trim() || "Car";
+        // Get car type
+        const carType = car.type || car.model?.car_type?.name || "";
+        // Get car image
+        const carImage = car.image || car.image_url || "/assets/cars/ridecard1.png";
+        // Get passengers
+        const passengers = car.passengers || car.model?.seats || 0;
+        // Get rating
+        const rating = parseFloat(car.rating || car.model?.average_rating || 0);
+
+        // Get base price from API - prioritize pricing.rental_calculation.daily_rate
+        // Then check car_prices array, then dynamicCarPrice, then fallback
+        let basePriceData = null;
+
+        // First, try to get from pricing.rental_calculation (from search API)
+        if (car.pricing?.rental_calculation?.daily_rate) {
+          basePriceData = {
+            price_per_day: parseFloat(car.pricing.rental_calculation.daily_rate),
+            display_price: `$${parseFloat(car.pricing.rental_calculation.daily_rate).toFixed(2)}`,
+            start_date: null,
+            end_date: null,
+          };
+        }
+        // Second, try to get from model.car_prices array (active price range)
+        else if (car.model?.car_prices && Array.isArray(car.model.car_prices) && car.model.car_prices.length > 0) {
+          const activePrice = car.model.car_prices.find(p => p.is_active !== false) || car.model.car_prices[0];
+          if (activePrice) {
+            basePriceData = {
+              price_per_day: parseFloat(activePrice.price_per_day || 0),
+              display_price: activePrice.display_price || `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
+              start_date: activePrice.start_date,
+              end_date: activePrice.end_date,
+            };
+          }
+        }
+        // Third, use dynamicCarPrice if available
+        else if (dynamicCarPrice) {
+          basePriceData = {
+            price_per_day: parseFloat(dynamicCarPrice.price_per_day || 0),
+            display_price: dynamicCarPrice.display_price || `$${parseFloat(dynamicCarPrice.price_per_day || 0).toFixed(2)}`,
+            start_date: dynamicCarPrice.start_date,
+            end_date: dynamicCarPrice.end_date,
+          };
+        }
+        // Fallback to car.price if available
+        else if (car.price) {
+          basePriceData = {
+            price_per_day: parseFloat(car.price),
+            display_price: `$${parseFloat(car.price).toFixed(2)}`,
+            start_date: null,
+            end_date: null,
+          };
+        }
+
+        // Get active car price for display
+        const activeCarPrice = basePriceData;
+
+        // Get available dates from car data (API provides available_start_date and available_end_date)
+        const availableStartDate = car.available_start_date || basePriceData?.start_date || dynamicCarPrice?.start_date;
+        const availableEndDate = car.available_end_date || basePriceData?.end_date || dynamicCarPrice?.end_date;
 
         return (
           <div
@@ -81,7 +159,7 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
           >
             <div className="flex flex-col lg:flex-row">
               {/* Left Section - Car Details */}
-              <div className="lg:w-1/3 p-4 lg:p-6 border-r-0 lg:border-r border-gray-200 border-b lg:border-b-0 pb-4 lg:pb-6 relative">
+              <div className="lg:w-1/3 p-6 border-r border-gray-200 relative">
                 {/* Unavailable Badge */}
                 {unavailable && (
                   <div className="absolute top-4 right-4 z-10">
@@ -92,62 +170,146 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
                 )}
 
                 {/* Car Model Name */}
-                <h3 className="text-2xl font-bold text-blue-600 mb-2">
-                  {car.name || `${car.model?.make || ""} ${car.model?.model || ""}`.trim() || "Car"} or similar
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  {carName}
                 </h3>
 
-                {/* Car Type */}
-                <p className="text-sm text-gray-600 mb-2">{car.type || car.model?.car_type?.name || ""}</p>
+                {/* Car Type Badge - Yellow oval */}
+                <div className="mb-4">
+                  <span className="bg-yellow-400 text-gray-900 px-3 py-1 rounded-full text-xs font-medium">
+                    {carType}
+                  </span>
+                </div>
 
-                {/* Dynamic Car Price Display */}
-                {dynamicCarPrice && dynamicCarPrice.start_date && dynamicCarPrice.end_date && (
-                  <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600">Base Price:</span>
-                      <span className="text-lg font-bold text-blue-700">
-                        {dynamicCarPrice.display_price || `$${dynamicCarPrice.price_per_day.toFixed(2)}`}
+                {/* Car Image with Year */}
+                <div className="relative w-full h-64 mb-4 bg-gray-50 rounded-lg overflow-hidden">
+                  <Image
+                    src={carImage}
+                    alt={carName}
+                    fill
+                    className="object-cover"
+                  />
+                  {/* Year Badge - Only show if year exists */}
+                  {carYear && (
+                    <div className="absolute bottom-4 right-4">
+                      <span className="text-gray-900 font-semibold text-lg">
+                        {carYear}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(dynamicCarPrice.start_date).toLocaleDateString()} - {new Date(dynamicCarPrice.end_date).toLocaleDateString()}
-                    </p>
+                  )}
+                </div>
+
+                {/* Base Price and Available Dates */}
+                {(activeCarPrice || availableStartDate || availableEndDate) && (
+                  <div className="mb-4 space-y-3">
+                    {/* Base Price Section */}
+                    {activeCarPrice && activeCarPrice.price_per_day > 0 && (
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 p-4 shadow-sm">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Base Price
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 font-normal">
+                              Starting from
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xl font-bold text-gray-900">
+                              {activeCarPrice.display_price ||
+                                `$${activeCarPrice.price_per_day?.toFixed(2) ||
+                                "0.00"
+                                }`}
+                            </span>
+                            <p className="text-xs text-gray-500 font-normal mt-0.5">
+                              per day
+                            </p>
+                          </div>
+                        </div>
+                        {/* Show price validity dates if available from car_prices */}
+                        {activeCarPrice.start_date &&
+                          activeCarPrice.end_date && (
+                            <div className="pt-2 border-t border-gray-200 mt-2">
+                              <div className="flex items-center gap-2">
+                                <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
+                                <span className="text-xs text-gray-600 font-medium">
+                                  Valid from{" "}
+                                  <span className="text-gray-900">
+                                    {formatDateDisplay(
+                                      activeCarPrice.start_date
+                                    )}
+                                  </span>{" "}
+                                  to{" "}
+                                  <span className="text-gray-900">
+                                    {formatDateDisplay(activeCarPrice.end_date)}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        {/* Show pricing info from API if available */}
+                        {car.pricing?.rental_calculation && (
+                          <div className="pt-2 border-t border-gray-200 mt-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-600">Base Rental Cost:</span>
+                              <span className="text-gray-900 font-semibold">
+                                ${parseFloat(car.pricing.rental_calculation.base_rental_cost || 0).toFixed(2)}
+                              </span>
+                            </div>
+                            {car.pricing.rental_calculation.rental_days && (
+                              <div className="flex items-center justify-between text-xs mt-1">
+                                <span className="text-gray-600">Rental Days:</span>
+                                <span className="text-gray-900 font-semibold">
+                                  {parseFloat(car.pricing.rental_calculation.rental_days).toFixed(2)} days
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Available Dates Section */}
+                    {(availableStartDate || availableEndDate) && (
+                      <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="w-4 h-4 text-gray-400" />
+                            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                              Available Period
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {availableStartDate && (
+                              <span className="text-xs text-gray-900 font-semibold bg-gray-100 px-2.5 py-1 rounded-md">
+                                {formatDateDisplay(availableStartDate)}
+                              </span>
+                            )}
+                            {availableStartDate && availableEndDate && (
+                              <span className="text-xs text-gray-400">→</span>
+                            )}
+                            {availableEndDate && (
+                              <span className="text-xs text-gray-900 font-semibold bg-gray-100 px-2.5 py-1 rounded-md">
+                                {formatDateDisplay(availableEndDate)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Collection Info */}
-                <div className="flex items-center gap-2 mb-3">
-                  <Plane className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700 uppercase">
-                    COLLECTION AT AIRPORT TERMINAL
-                  </span>
-                </div>
-
-                {/* Best Price Badge */}
-                <div className="mb-4">
-                  <span className="text-red-600 text-sm font-medium">
-                    Best price for these dates
-                  </span>
-                </div>
-
-                {/* Car Image */}
-                <div className="relative w-full h-48 mb-4 bg-gray-50 rounded-lg overflow-hidden">
-                  <Image
-                    src={car.image || car.image_url || "/assets/cars/ridecard1.png"}
-                    alt={car.name || `${car.model?.make} ${car.model?.model}` || "Car"}
-                    fill
-                    className="object-contain p-4"
-                  />
-                </div>
-
                 {/* Specifications */}
-                <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-6 mb-4">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium">{car.passengers || car.model?.seats || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CarIcon className="w-5 h-5 text-gray-600" />
-                    <span className="text-sm font-medium">{doors}</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      {passengers}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <svg
@@ -173,124 +335,173 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
                       <path d="M15 3v6" />
                       <path d="M15 15v6" />
                     </svg>
-                    <span className="text-sm font-medium">{transmissionDisplay}</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      {transmissionDisplay}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-gray-600"
+                    >
+                      <path d="M3 2v6h6" />
+                      <path d="M21 2v6h-6" />
+                      <path d="M21 22v-6h-6" />
+                      <path d="M3 22v-6h6" />
+                      <rect x="3" y="10" width="18" height="4" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-700 capitalize">
+                      {fuelType}
+                    </span>
                   </div>
                 </div>
 
-                {/* Unlimited Mileage */}
-                <div className="mt-4">
-                  <span className="text-sm font-semibold uppercase text-gray-700">
-                    UNLIMITED MILEAGE
+                {/* Rating */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${i < Math.floor(rating)
+                          ? "fill-red-400 text-red-400"
+                          : "fill-gray-300 text-gray-300"
+                          }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    ({rating.toFixed(1)})
                   </span>
                 </div>
               </div>
 
               {/* Right Section - Pricing Plan Cards */}
-              <div className="lg:w-2/3 p-4 lg:p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-x-auto">
-                  {plansWithPricing.map((plan) => (
-                    <div
-                      key={plan.id}
-                      className="flex flex-col border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow min-w-[200px]"
-                    >
-                      {/* Header */}
+              <div className="lg:w-2/3 p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {plansWithPricing.map((plan) => {
+                    // Determine header color based on plan type
+                    const isStandard = plan.name.toLowerCase() === "standard";
+                    const headerBg = isStandard ? "bg-gray-700" : "bg-red-400";
+
+                    return (
                       <div
-                        className={`${plan.headerColor} text-white px-4 py-3 flex items-center justify-between`}
+                        key={plan.id}
+                        className="flex flex-col border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white"
                       >
-                        <span className="font-semibold text-sm">{plan.name}</span>
-                        <Info className="w-4 h-4" />
-                      </div>
-
-                      {/* Features */}
-                      <div className="flex-1 bg-white p-4 space-y-2">
-                        {plan.features.map((feature, idx) => (
-                          <div key={idx} className="flex items-start gap-2">
-                            <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs text-gray-700">{feature.text}</span>
-                              {feature.badge && (
-                                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                                  {feature.badgeIcon && (
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="12"
-                                      height="12"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    >
-                                      <line x1="3" y1="12" x2="21" y2="12" />
-                                      <line x1="3" y1="8" x2="21" y2="8" />
-                                      <line x1="3" y1="16" x2="21" y2="16" />
-                                      <circle cx="12" cy="12" r="1" />
-                                    </svg>
-                                  )}
-                                  {feature.badge}
-                                  <Info className="w-3 h-3" />
-                                </span>
-                              )}
-                              {feature.hasInfo && (
-                                <Info className="w-3 h-3 text-gray-400" />
-                              )}
-                            </div>
+                        {/* Header */}
+                        <div
+                          className={`${headerBg} text-white px-4 py-3 flex items-center justify-between`}
+                        >
+                          <span className="font-semibold text-sm">
+                            {plan.name}
+                          </span>
+                          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                            <Info className="w-3 h-3" />
                           </div>
-                        ))}
-                      </div>
-
-                      {/* Pricing */}
-                      <div className="bg-white p-4 border-t border-gray-100">
-                        {plan.hasDiscount && plan.discount > 0 && (
-                          <div className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded inline-block mb-2">
-                            -{plan.discount}%
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          {plan.originalPrice > plan.pricePerDay && (
-                            <p className="text-xs text-gray-500 line-through">
-                              {plan.originalDisplayPrice || `${plan.originalPrice.toFixed(2)} €/day`}
-                            </p>
-                          )}
-                          <p className="text-lg font-bold text-gray-900">
-                            {plan.displayPrice || `${plan.currentPrice} €/day`}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {plan.totalPrice} € {rentalDays} days
-                          </p>
                         </div>
-                      </div>
 
-                      {/* Continue Button */}
-                      <Button
-                        disabled={unavailable}
-                        onClick={() => {
-                          if (!unavailable) {
-                            bookingStorage.setCar(car);
-                            // Preserve all existing step1 data including location IDs
-                            const existingStep1 = bookingStorage.getStep("step1") || {};
-                            bookingStorage.updateStep("step1", {
-                              ...existingStep1,
-                              protectionPlan: plan.id,
-                              // Ensure location IDs are preserved
-                              pickupLocationId: existingStep1.pickupLocationId || existingStep1.pickup_location_id || null,
-                              pickup_location_id: existingStep1.pickup_location_id || existingStep1.pickupLocationId || null,
-                              dropoffLocationId: existingStep1.dropoffLocationId || existingStep1.return_location_id || existingStep1.pickupLocationId || existingStep1.pickup_location_id || null,
-                              return_location_id: existingStep1.return_location_id || existingStep1.dropoffLocationId || existingStep1.pickupLocationId || existingStep1.pickup_location_id || null,
-                            });
-                            router.push("/booking/step1");
-                          }
-                        }}
-                        className={`m-4 font-medium py-3 rounded ${unavailable
-                          ? "bg-gray-400 cursor-not-allowed text-white"
-                          : "bg-blue-700 hover:bg-blue-800 text-white"
-                          }`}
-                      >
-                        {unavailable ? "UNAVAILABLE" : "CONTINUE"}
-                      </Button>
-                    </div>
-                  ))}
+                        {/* Features */}
+                        <div className="flex-1 bg-white p-4 space-y-3">
+                          {plan.features.map((feature, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs text-gray-700">
+                                  {feature.text}
+                                </span>
+                                {feature.badge && (
+                                  <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                    {feature.badge}
+                                    <Info className="w-3 h-3" />
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Pricing */}
+                        <div className="bg-white p-4 border-t border-gray-100">
+                          {plan.hasDiscount && plan.discount > 0 && (
+                            <div className="bg-red-400 text-white text-xs font-semibold px-2 py-1 rounded inline-block mb-2">
+                              -{plan.discount}%
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            {/* Show original price if it exists and is higher than current price */}
+                            {plan.originalDisplayPrice && (
+                              <p className="text-xs text-gray-500 line-through">
+                                {plan.originalDisplayPrice}/day
+                              </p>
+                            )}
+                            {!plan.originalDisplayPrice &&
+                              plan.originalPrice &&
+                              plan.originalPrice > plan.pricePerDay && (
+                                <p className="text-xs text-gray-500 line-through">
+                                  ${plan.originalPrice.toFixed(2)}/day
+                                </p>
+                              )}
+                            <p className="text-lg font-bold text-gray-900">
+                              {plan.displayPrice ||
+                                `$${parseFloat(plan.currentPrice).toFixed(2)}`}
+                              /day
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Continue Button */}
+                        <Button
+                          disabled={unavailable}
+                          onClick={() => {
+                            if (!unavailable) {
+                              bookingStorage.setCar(car);
+                              const existingStep1 =
+                                bookingStorage.getStep("step1") || {};
+                              bookingStorage.updateStep("step1", {
+                                ...existingStep1,
+                                protectionPlan: plan.id,
+                                pickupLocationId:
+                                  existingStep1.pickupLocationId ||
+                                  existingStep1.pickup_location_id ||
+                                  null,
+                                pickup_location_id:
+                                  existingStep1.pickup_location_id ||
+                                  existingStep1.pickupLocationId ||
+                                  null,
+                                dropoffLocationId:
+                                  existingStep1.dropoffLocationId ||
+                                  existingStep1.return_location_id ||
+                                  existingStep1.pickupLocationId ||
+                                  existingStep1.pickup_location_id ||
+                                  null,
+                                return_location_id:
+                                  existingStep1.return_location_id ||
+                                  existingStep1.dropoffLocationId ||
+                                  existingStep1.pickupLocationId ||
+                                  existingStep1.pickup_location_id ||
+                                  null,
+                              });
+                              router.push("/booking/step1");
+                            }
+                          }}
+                          className={`m-4 font-medium py-3 rounded ${unavailable
+                            ? "bg-gray-400 cursor-not-allowed text-white"
+                            : "bg-red-400 hover:bg-red-500 text-white"
+                            }`}
+                        >
+                          {unavailable ? "UNAVAILABLE" : "Continue"}
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

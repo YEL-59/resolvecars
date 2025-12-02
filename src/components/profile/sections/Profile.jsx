@@ -20,12 +20,12 @@ export default function ProfileMain() {
           >
             Booking History
           </TabsTrigger>
-          <TabsTrigger
+          {/* <TabsTrigger
             value="vehicles"
             className="rounded-full data-[state=active]:bg-white data-[state=active]:text-black"
           >
             Saved Vehicles
-          </TabsTrigger>
+          </TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="profile">

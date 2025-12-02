@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 
 export default function PersonalInfo() {
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid md:grid-cols-1 gap-6">
       {/* Left Card */}
       <div className="p-6 border rounded-xl shadow-sm space-y-4">
         <div className="flex items-center gap-4">
@@ -49,7 +49,7 @@ export default function PersonalInfo() {
       </div>
 
       {/* Right Card */}
-      <div className="p-6 border rounded-xl shadow-sm space-y-4">
+      {/* <div className="p-6 border rounded-xl shadow-sm space-y-4">
         <h3 className="text-sm font-semibold mb-2">Rental Preferences</h3>
         <p className="text-sm text-muted-foreground mb-4">
           Set your default preferences for faster booking
@@ -66,7 +66,7 @@ export default function PersonalInfo() {
             Update Preferences
           </Button>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Grid3X3, List, Loader2 } from "lucide-react";
+import { Grid3X3, List } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useSearchParams } from "next/navigation";
 import { useCars, useSearchCars } from "@/hooks/cars.hook";
 import { isCarUnavailable } from "./helpers/carHelpers";
 import CarGridView from "./components/CarGridView";
 import CarFlexView from "./components/CarFlexView";
+import CarGridSkeleton from "./components/CarGridSkeleton";
+import CarFlexSkeleton from "./components/CarFlexSkeleton";
 import FiltersDialog from "./components/FiltersDialog";
 import Pagination from "./components/Pagination";
 
@@ -339,12 +341,15 @@ export default function CarsCardSection() {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading State - Skeleton */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="ml-2 text-muted-foreground">Loading cars...</span>
-          </div>
+          <>
+            {viewMode === "grid" ? (
+              <CarGridSkeleton />
+            ) : (
+              <CarFlexSkeleton />
+            )}
+          </>
         )}
 
         {/* Error State */}
