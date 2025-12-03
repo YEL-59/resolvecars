@@ -20,6 +20,7 @@ import {
   ArrowRight,
   X,
   Search,
+  RotateCcw,
 } from "lucide-react";
 import { format, differenceInDays, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -295,6 +296,35 @@ const HeroSections = () => {
   const formatDateForAPI = (date) => {
     if (!date) return "";
     return format(date, "yyyy-MM-dd");
+  };
+
+  const handleClear = () => {
+    // Clear all form fields
+    setPickupDate(null);
+    setReturnDate(null);
+    setPickupTime("13:00");
+    setReturnTime("13:30");
+    setPickupLocation("");
+    setReturnLocation("");
+    setPickupLocationId(null);
+    setReturnLocationId(null);
+    setSameStore(true);
+    setAgeConfirmed(false);
+
+    // Clear booking storage
+    bookingStorage.updateStep("step1", {
+      pickupDate: "",
+      dropoffDate: "",
+      pickupLocation: "",
+      pickupLocationId: null,
+      dropoffLocation: "",
+      dropoffLocationId: null,
+      pickup_time: "",
+      return_time: "",
+      requirements: "",
+      protectionPlan: "",
+      extras: [],
+    });
   };
 
   const handleSearch = () => {
@@ -736,14 +766,29 @@ const HeroSections = () => {
                   </div>
                 </div>
 
-                {/* Search Button */}
-                <Button
-                  onClick={handleSearch}
-                  className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
-                >
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-                  SEARCH
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-3 w-full md:w-auto">
+                  {/* Clear Button */}
+                  {(pickupDate || returnDate || pickupLocation || returnLocation) && (
+                    <Button
+                      onClick={handleClear}
+                      variant="outline"
+                      className="bg-white/10 hover:bg-white/20 text-white border-white/30 px-4 sm:px-6 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
+                    >
+                      <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                      CLEAR
+                    </Button>
+                  )}
+
+                  {/* Search Button */}
+                  <Button
+                    onClick={handleSearch}
+                    className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
+                  >
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                    SEARCH
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Info, Check, Calendar as CalendarIcon, Star, LogIn } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { userStorage } from "@/lib/userStorage";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import { isCarUnavailable, getCarPriceForDateRange, getCarPriceForDate, getCarPriceForCurrentDate, transformPackageToPlan, formatDateDisplay } from "../helpers/carHelpers";
 
-export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }) {
+// Internal component that uses useSearchParams
+function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   return (
@@ -457,30 +460,53 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
                                 setShowLoginDialog(true);
                                 return;
                               }
-                              
+
+                              // Validate required search fields
+                              const existingStep1 = bookingStorage.getStep("step1") || {};
+
+                              // Check for required fields from bookingStorage or URL params
+                              const hasPickupDate = existingStep1.pickupDate || pickupDate || searchParams.get("pickup_date");
+                              const hasReturnDate = existingStep1.dropoffDate || existingStep1.returnDate || returnDate || searchParams.get("return_date");
+                              const hasPickupLocation = existingStep1.pickupLocationId || existingStep1.pickup_location_id || searchParams.get("pickup_location_id");
+
+                              // Show toast if required fields are missing
+                              if (!hasPickupDate || !hasReturnDate || !hasPickupLocation) {
+                                toast.error("Please complete the search form first. Pickup date, return date, and location are required to continue with booking.", {
+                                  duration: 5000,
+                                  style: {
+                                    maxWidth: '500px',
+                                  },
+                                });
+                                // Scroll to search form
+                                router.push("/cars");
+                                return;
+                              }
+
                               bookingStorage.setCar(car);
-                              const existingStep1 =
-                                bookingStorage.getStep("step1") || {};
                               bookingStorage.updateStep("step1", {
                                 ...existingStep1,
                                 protectionPlan: plan.id,
                                 pickupLocationId:
                                   existingStep1.pickupLocationId ||
                                   existingStep1.pickup_location_id ||
+                                  searchParams.get("pickup_location_id") ||
                                   null,
                                 pickup_location_id:
                                   existingStep1.pickup_location_id ||
                                   existingStep1.pickupLocationId ||
+                                  searchParams.get("pickup_location_id") ||
                                   null,
                                 dropoffLocationId:
                                   existingStep1.dropoffLocationId ||
                                   existingStep1.return_location_id ||
+                                  searchParams.get("return_location_id") ||
                                   existingStep1.pickupLocationId ||
                                   existingStep1.pickup_location_id ||
                                   null,
                                 return_location_id:
                                   existingStep1.return_location_id ||
                                   existingStep1.dropoffLocationId ||
+                                  searchParams.get("return_location_id") ||
                                   existingStep1.pickupLocationId ||
                                   existingStep1.pickup_location_id ||
                                   null,
@@ -504,7 +530,7 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
           </div>
         );
       })}
-      
+
       {/* Login Required Dialog */}
       <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
         <DialogContent>
@@ -540,6 +566,19 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <CarFlexViewContent cars={cars} pickupDate={pickupDate} returnDate={returnDate} rentalDays={rentalDays} />
+    </Suspense>
   );
 }
 
