@@ -684,7 +684,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                             </div>
 
                             {/* Promotional Code */}
-                            <div className="mb-4">
+                            {/* <div className="mb-4">
                                 <Input
                                     placeholder="Add code"
                                     className="text-sm mb-2"
@@ -692,10 +692,10 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 <Button type="button" variant="outline" size="sm" className="w-full">
                                     Apply
                                 </Button>
-                            </div>
+                            </div> */}
 
                             {/* Discount Info */}
-                            <div className="mb-4">
+                            {/* <div className="mb-4">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded">
                                         -20%
@@ -707,7 +707,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 <p className="text-sm text-gray-500 line-through">
                                     {total.toFixed(0)} € ({rentalDays} days)
                                 </p>
-                            </div>
+                            </div> */}
 
                             {/* Loyalty Points */}
                             <div className="pt-4 border-t border-gray-200">
@@ -730,7 +730,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     name="firstName"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Driver's name *</FormLabel>
+                                            <FormLabel>Frist name *</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Nyssa" {...field} value={field.value || ""} />
                                             </FormControl>
@@ -744,7 +744,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     name="lastName"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Driver's surname *</FormLabel>
+                                            <FormLabel>Last name *</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Mccall" {...field} value={field.value || ""} />
                                             </FormControl>
@@ -752,7 +752,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         </FormItem>
                                     )}
                                 />
-
+                                {/* 
                                 <FormField
                                     control={form.control}
                                     name="licenseNumber"
@@ -765,7 +765,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             <FormMessage />
                                         </FormItem>
                                     )}
-                                />
+                                /> */}
 
                                 <FormField
                                     control={form.control}
@@ -803,7 +803,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     )}
                                 />
 
-                                <FormField
+                                {/* <FormField
                                     control={form.control}
                                     name="country"
                                     render={({ field }) => (
@@ -824,11 +824,11 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             <FormMessage />
                                         </FormItem>
                                     )}
-                                />
+                                /> */}
                             </div>
 
                             {/* MeliáRewards Section */}
-                            <div className="mt-6 pt-6 border-t border-gray-200">
+                            {/* <div className="mt-6 pt-6 border-t border-gray-200">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-gray-700">
                                         Earn points on your MeliáRewards card MELIÁREWARDS
@@ -843,7 +843,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                            </div>
+                            </div> */}
 
                             {/* Checkboxes */}
                             <div className="mt-6 space-y-4">

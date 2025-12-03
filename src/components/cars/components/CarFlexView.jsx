@@ -1,29 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Users, Info, Check, Calendar as CalendarIcon, Star } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Users, Info, Check, Calendar as CalendarIcon, Star, LogIn } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
+import { userStorage } from "@/lib/userStorage";
 import { useRouter } from "next/navigation";
-import { isCarUnavailable, getCarPriceForDateRange, getCarPriceForDate, getCarPriceForCurrentDate, transformPackageToPlan } from "../helpers/carHelpers";
-
-// Format date for display (e.g., "Nov 26, 2025")
-const formatDateDisplay = (dateString) => {
-  if (!dateString) return "";
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return dateString;
-  }
-};
+import Link from "next/link";
+import { isCarUnavailable, getCarPriceForDateRange, getCarPriceForDate, getCarPriceForCurrentDate, transformPackageToPlan, formatDateDisplay } from "../helpers/carHelpers";
 
 export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }) {
   const router = useRouter();
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -462,6 +452,12 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
                           disabled={unavailable}
                           onClick={() => {
                             if (!unavailable) {
+                              // Check if user is logged in
+                              if (!userStorage.isLoggedIn()) {
+                                setShowLoginDialog(true);
+                                return;
+                              }
+                              
                               bookingStorage.setCar(car);
                               const existingStep1 =
                                 bookingStorage.getStep("step1") || {};
@@ -508,6 +504,41 @@ export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }
           </div>
         );
       })}
+      
+      {/* Login Required Dialog */}
+      <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-yellow-100 rounded-full">
+                <LogIn className="w-6 h-6 text-yellow-600" />
+              </div>
+              <DialogTitle>Login Required</DialogTitle>
+            </div>
+            <DialogDescription>
+              You need to be logged in to continue with your booking. Please sign in or create an account to proceed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowLoginDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowLoginDialog(false);
+                router.push("/auth/signin");
+              }}
+              className="bg-yellow-400 hover:bg-yellow-500 text-black"
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Go to Login
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

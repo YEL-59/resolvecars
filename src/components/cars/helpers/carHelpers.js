@@ -149,3 +149,20 @@ export const transformPackageToPlan = (pkg, index) => {
   };
 };
 
+/**
+ * Format date for display (e.g., "Nov 26, 2025")
+ */
+export const formatDateDisplay = (dateString) => {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
+

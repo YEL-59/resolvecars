@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function PaymentCancelPage() {
+function PaymentCancelContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [bookingId, setBookingId] = useState(null);
@@ -61,6 +61,21 @@ export default function PaymentCancelPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function PaymentCancelPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading...</p>
+                </div>
+            </div>
+        }>
+            <PaymentCancelContent />
+        </Suspense>
     );
 }
 

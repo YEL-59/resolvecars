@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useBookings } from "@/hooks/bookings.hook";
 import Layout from "@/components/layout/Layout";
@@ -23,7 +23,26 @@ import Image from "next/image";
 import { userStorage } from "@/lib/userStorage";
 import Link from "next/link";
 
-export default function MyBookingsPage() {
+// Loading fallback component
+function BookingsLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Bookings</h1>
+          <p className="text-gray-600">View and manage your booking history</p>
+        </div>
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <p className="mt-4 text-gray-600">Loading your bookings...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main bookings content component that uses useSearchParams
+function MyBookingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -119,14 +138,13 @@ export default function MyBookingsPage() {
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Bookings</h1>
-            <p className="text-gray-600">View and manage your booking history</p>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Bookings</h1>
+          <p className="text-gray-600">View and manage your booking history</p>
+        </div>
 
           {/* Loading State */}
           {isLoading && (
@@ -448,6 +466,17 @@ export default function MyBookingsPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function MyBookingsPage() {
+  return (
+    <Layout>
+      <Suspense fallback={<BookingsLoadingFallback />}>
+        <MyBookingsContent />
+      </Suspense>
     </Layout>
   );
 }
