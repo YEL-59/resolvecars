@@ -132,11 +132,11 @@ export default function Navbar() {
           {mounted && isLoggedIn && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2">
+                <button className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-100 transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline text-sm font-medium text-gray-800">
+                  <span className="hidden md:inline text-sm font-medium text-gray-800 pointer-events-none">
                     {userName}
                   </span>
                 </button>
@@ -149,13 +149,13 @@ export default function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Link href="/profile" className="flex items-center gap-2">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center gap-2 w-full cursor-pointer">
                     <User className="mr-2 h-4 w-4" /> Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/my-bookings" className="flex items-center gap-2">
+                <DropdownMenuItem asChild>
+                  <Link href="/my-bookings" className="flex items-center gap-2 w-full cursor-pointer">
                     <Car className="mr-2 h-4 w-4" /> My Bookings
                   </Link>
                 </DropdownMenuItem>

@@ -111,8 +111,11 @@ const SearchableLocationInput = ({
     : allLocations;
 
   useEffect(() => {
-    if (value) {
-      setSearchQuery(value);
+    // Always sync the value, including when it's cleared to empty string
+    setSearchQuery(value || "");
+    if (!value) {
+      setSelectedLocationId(null);
+      setShowSuggestions(false);
     }
   }, [value]);
 

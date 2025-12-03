@@ -1,7 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, User, CalendarDays, Car, CreditCard, Package, DollarSign } from "lucide-react";
+import { CheckCircle2, User, CalendarDays, Car, CreditCard, Package, DollarSign } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useMemo } from "react";
 import Image from "next/image";
@@ -341,19 +340,6 @@ export default function Step4Review({ onPrev }) {
                             <span className="text-gray-900 font-bold text-lg">{grandTotal.toFixed(2)} €</span>
                         </div>
                     </div>
-                </div>
-
-                {/* Back Button Only - View Only Mode */}
-                <div className="flex justify-start pt-4 mt-6 border-t border-rose-200">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onPrev}
-                        className="flex items-center gap-2 border-rose-300 text-rose-700 hover:bg-rose-50"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back
-                    </Button>
                 </div>
             </div>
         </div>
