@@ -472,11 +472,11 @@ function MyBookingsContent() {
 // Main page component with Suspense boundary
 export default function MyBookingsPage() {
   return (
-    <Layout>
-      <Suspense fallback={<BookingsLoadingFallback />}>
+    <Suspense fallback={<BookingsLoadingFallback />}>
+      <Layout>
         <MyBookingsContent />
-      </Suspense>
-    </Layout>
+      </Layout>
+    </Suspense>
   );
 }
 
