@@ -466,7 +466,6 @@ function MyBookingsContent() {
           )}
         </div>
       </div>
-    </div>
   );
 }
 
