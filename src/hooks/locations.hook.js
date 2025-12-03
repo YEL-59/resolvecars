@@ -38,8 +38,10 @@ export const useLocations = (params = {}) => {
         },
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // No cache - always consider data stale
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnMount: true, // Always refetch when component mounts
+    gcTime: 0, // No garbage collection time - remove from cache immediately
   });
 };
 

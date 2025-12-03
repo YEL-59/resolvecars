@@ -122,8 +122,10 @@ export const useCars = (params = {}) => {
         },
       };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // No cache - always consider data stale
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnMount: true, // Always refetch when component mounts
+    gcTime: 0, // No garbage collection time - remove from cache immediately
   });
 };
 
@@ -245,8 +247,10 @@ export const useSearchCars = (params = {}) => {
     },
     enabled:
       !!pickup_location_id && !!pickup_date && !!return_date,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0, // No cache - always consider data stale
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnMount: true, // Always refetch when component mounts
+    gcTime: 0, // No garbage collection time - remove from cache immediately
   });
 };
 

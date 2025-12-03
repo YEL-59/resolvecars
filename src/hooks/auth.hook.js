@@ -311,6 +311,10 @@ export const useGetUser = () => {
       const res = await axiosPrivate.get("/user/me");
       return res.data;
     },
+    staleTime: 0, // No cache - always consider data stale
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnMount: true, // Always refetch when component mounts
+    gcTime: 0, // No garbage collection time - remove from cache immediately
     enabled: typeof window !== "undefined" && !!localStorage.getItem("auth_token"),
     retry: false,
   });
