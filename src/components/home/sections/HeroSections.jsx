@@ -30,6 +30,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useLocations } from "@/hooks/locations.hook";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 // Time Selector Component
 const TimeSelector = ({ value, onChange, label }) => {
@@ -315,7 +316,11 @@ const HeroSections = () => {
     setSameStore(true);
     setAgeConfirmed(false);
 
-    // Clear booking storage
+    // Clear UI state
+    setCalendarOpen(false);
+    setActiveTrigger(null);
+
+    // Clear booking storage completely for step1
     bookingStorage.updateStep("step1", {
       pickupDate: "",
       dropoffDate: "",
@@ -329,20 +334,26 @@ const HeroSections = () => {
       protectionPlan: "",
       extras: [],
     });
+
+    // If we're on /cars page, clear URL parameters by navigating
+    if (typeof window !== "undefined" && window.location.pathname === "/cars") {
+      router.push("/cars");
+    }
   };
 
   const handleSearch = () => {
-    // Validate required fields
+    // Validate required fields with user feedback
     if (!pickupDate || !returnDate || !pickupLocationId) {
-      console.warn("Missing required search fields:", {
-        pickupDate: !!pickupDate,
-        returnDate: !!returnDate,
-        pickupLocationId: !!pickupLocationId,
-      });
+      const missingFields = [];
+      if (!pickupDate) missingFields.push("Pick-up date");
+      if (!returnDate) missingFields.push("Return date");
+      if (!pickupLocationId) missingFields.push("Pick-up location");
+
+      toast.error(`Please fill in: ${missingFields.join(", ")}`);
       return;
     }
     if (!sameStore && !returnLocationId) {
-      console.warn("Return location is required when not using same store");
+      toast.error("Please select a return location");
       return;
     }
 
@@ -774,8 +785,8 @@ const HeroSections = () => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 w-full md:w-auto">
-                  {/* Clear Button */}
-                  {(pickupDate || returnDate || pickupLocation || returnLocation) && (
+                  {/* Clear Button - Show if any field has data */}
+                  {(pickupDate || returnDate || pickupLocation || returnLocation || pickupLocationId || returnLocationId) && (
                     <Button
                       onClick={handleClear}
                       variant="outline"

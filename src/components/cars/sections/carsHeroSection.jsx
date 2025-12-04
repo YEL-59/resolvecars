@@ -24,6 +24,7 @@ import { bookingStorage } from "@/lib/bookingStorage";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useLocations } from "@/hooks/locations.hook";
+import toast from "react-hot-toast";
 
 // Time Selector Component
 const TimeSelector = ({ value, onChange, label }) => {
@@ -254,20 +255,31 @@ const CarsHeroSection = () => {
   const [sameStore, setSameStore] = useState(true);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
-  // Load existing booking data
+  // Load existing booking data only if URL has no search params
+  // This prevents reloading cleared data when user navigates back
   useEffect(() => {
-    const step1 = bookingStorage.getStep("step1") || {};
-    try {
-      if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
-      if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
-      if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
-      if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
-      if (step1.dropoffLocation) {
-        setReturnLocation(step1.dropoffLocation);
-        setSameStore(step1.pickupLocation === step1.dropoffLocation);
-      }
-      if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
-    } catch { }
+    // Check if we're on /cars page and if URL has search params
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrlSearchParams = urlParams.has("pickup_location_id") ||
+      urlParams.has("pickup_date") ||
+      urlParams.has("return_date");
+
+    // Only load from storage if URL has no search params
+    // If URL has params, they will be loaded by CarsCardSection component
+    if (!hasUrlSearchParams) {
+      const step1 = bookingStorage.getStep("step1") || {};
+      try {
+        if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
+        if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
+        if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
+        if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
+        if (step1.dropoffLocation) {
+          setReturnLocation(step1.dropoffLocation);
+          setSameStore(step1.pickupLocation === step1.dropoffLocation);
+        }
+        if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
+      } catch { }
+    }
   }, []);
 
   // Calculate period in days
@@ -324,7 +336,11 @@ const CarsHeroSection = () => {
     setSameStore(true);
     setAgeConfirmed(false);
 
-    // Clear booking storage
+    // Clear UI state
+    setCalendarOpen(false);
+    setActiveTrigger(null);
+
+    // Clear booking storage completely for step1
     bookingStorage.updateStep("step1", {
       pickupDate: "",
       dropoffDate: "",
@@ -339,22 +355,23 @@ const CarsHeroSection = () => {
       extras: [],
     });
 
-    // Navigate to cars page without search params
+    // Navigate to cars page without search params (clears URL parameters)
     router.push("/cars");
   };
 
   const handleSearch = () => {
-    // Validate required fields
+    // Validate required fields with user feedback
     if (!pickupDate || !returnDate || !pickupLocationId) {
-      console.warn("Missing required search fields:", {
-        pickupDate: !!pickupDate,
-        returnDate: !!returnDate,
-        pickupLocationId: !!pickupLocationId,
-      });
+      const missingFields = [];
+      if (!pickupDate) missingFields.push("Pick-up date");
+      if (!returnDate) missingFields.push("Return date");
+      if (!pickupLocationId) missingFields.push("Pick-up location");
+
+      toast.error(`Please fill in: ${missingFields.join(", ")}`);
       return;
     }
     if (!sameStore && !returnLocationId) {
-      console.warn("Return location is required when not using same store");
+      toast.error("Please select a return location");
       return;
     }
 
@@ -746,8 +763,8 @@ const CarsHeroSection = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 w-full md:w-auto">
-              {/* Clear Button */}
-              {(pickupDate || returnDate || pickupLocation || returnLocation) && (
+              {/* Clear Button - Show if any field has data */}
+              {(pickupDate || returnDate || pickupLocation || returnLocation || pickupLocationId || returnLocationId) && (
                 <Button
                   onClick={handleClear}
                   variant="outline"

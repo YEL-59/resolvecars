@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { useGetUser } from "@/hooks/auth.hook";
+import toast from "react-hot-toast";
 
 export default function Step2Customer({ onPrev, onNext }) {
   const form = useFormContext();
@@ -58,9 +59,96 @@ export default function Step2Customer({ onPrev, onNext }) {
     return today.toISOString().split("T")[0];
   };
 
-  const handleNext = (e) => {
+  const handleNext = async (e) => {
     e.preventDefault();
-    // Force move to next step regardless of validation
+
+    // Get current form values and trim whitespace
+    const values = form.getValues();
+    let firstName = values.firstName?.trim() || "";
+    let lastName = values.lastName?.trim() || "";
+    let email = values.email?.trim() || "";
+    let phone = values.phone?.trim() || "";
+
+    let hasErrors = false;
+
+    // Validate required fields and set form errors
+    if (!firstName) {
+      form.setError("firstName", {
+        type: "manual",
+        message: "First name is required"
+      });
+      toast.error("Please enter your first name");
+      hasErrors = true;
+    } else {
+      form.clearErrors("firstName");
+    }
+
+    if (!lastName) {
+      form.setError("lastName", {
+        type: "manual",
+        message: "Last name is required"
+      });
+      toast.error("Please enter your last name");
+      hasErrors = true;
+    } else {
+      form.clearErrors("lastName");
+    }
+
+    if (!email) {
+      form.setError("email", {
+        type: "manual",
+        message: "Email address is required"
+      });
+      toast.error("Please enter your email address");
+      hasErrors = true;
+    } else {
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        form.setError("email", {
+          type: "manual",
+          message: "Please enter a valid email address"
+        });
+        toast.error("Please enter a valid email address");
+        hasErrors = true;
+      } else {
+        form.clearErrors("email");
+      }
+    }
+
+    if (!phone) {
+      form.setError("phone", {
+        type: "manual",
+        message: "Phone number is required"
+      });
+      toast.error("Please enter your phone number");
+      hasErrors = true;
+    } else {
+      form.clearErrors("phone");
+    }
+
+    // If any errors, stop here and focus on first error field
+    if (hasErrors) {
+      // Focus on the first field with error
+      if (!firstName) {
+        form.setFocus("firstName");
+      } else if (!lastName) {
+        form.setFocus("lastName");
+      } else if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        form.setFocus("email");
+      } else if (!phone) {
+        form.setFocus("phone");
+      }
+      return;
+    }
+
+    // Update form values with trimmed values
+    form.setValue("firstName", firstName);
+    form.setValue("lastName", lastName);
+    form.setValue("email", email);
+    form.setValue("phone", phone);
+
+    // All validations passed, proceed to next step
     // Form values are automatically saved via form.watch() in BookingRoot
     onNext();
   };
@@ -85,9 +173,9 @@ export default function Step2Customer({ onPrev, onNext }) {
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel>First Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your first name" {...field} value={field.value || ""} />
+                      <Input placeholder="Enter your first name" {...field} value={field.value || ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -99,9 +187,9 @@ export default function Step2Customer({ onPrev, onNext }) {
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name</FormLabel>
+                    <FormLabel>Last Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your last name" {...field} value={field.value || ""} />
+                      <Input placeholder="Enter your last name" {...field} value={field.value || ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -114,13 +202,14 @@ export default function Step2Customer({ onPrev, onNext }) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel>Email Address *</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         placeholder="Enter your email address"
                         {...field}
                         value={field.value || ""}
+                        required
                       />
                     </FormControl>
                     <FormMessage />
@@ -133,13 +222,14 @@ export default function Step2Customer({ onPrev, onNext }) {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>Phone Number *</FormLabel>
                     <FormControl>
                       <Input
                         type="tel"
                         placeholder="Enter your phone number"
                         {...field}
                         value={field.value || ""}
+                        required
                       />
                     </FormControl>
                     <FormMessage />
