@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Grid3X3, List } from "lucide-react";
+// import { Grid3X3, List } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useSearchParams } from "next/navigation";
 import { useCars, useSearchCars } from "@/hooks/cars.hook";
-import { isCarUnavailable } from "./helpers/carHelpers";
-import CarGridView from "./components/CarGridView";
+// import { isCarUnavailable } from "./helpers/carHelpers";
+// import CarGridView from "./components/CarGridView";
 import CarFlexView from "./components/CarFlexView";
-import CarGridSkeleton from "./components/CarGridSkeleton";
+// import CarGridSkeleton from "./components/CarGridSkeleton";
 import CarFlexSkeleton from "./components/CarFlexSkeleton";
-import FiltersDialog from "./components/FiltersDialog";
+// import FiltersDialog from "./components/FiltersDialog";
 import Pagination from "./components/Pagination";
 
 // Sample car data (fallback if needed)
@@ -66,12 +66,12 @@ const localCarsData = [
 
 export default function CarsCardSection() {
   const searchParams = useSearchParams();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [priceRange, setPriceRange] = useState([0, 500]);
-  const [sortBy, setSortBy] = useState("Name (A-Z)");
-  const [viewMode, setViewMode] = useState("flex"); // Default to flex view
+  // Filter functionality commented out
+  // const [isFilterOpen, setIsFilterOpen] = useState(false);
+  // const [searchTerm, setSearchTerm] = useState("");
+  // const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  // const [priceRange, setPriceRange] = useState([0, 500]);
+  // const [sortBy, setSortBy] = useState("Name (A-Z)");
   const [rentalDays, setRentalDays] = useState(23);
 
   // Get search parameters from URL
@@ -109,20 +109,21 @@ export default function CarsCardSection() {
     : regularCarsQuery;
 
   // Reset price range when search params are present (search results may have different price ranges)
-  useEffect(() => {
-    if (hasSearchParams && data?.cars && data.cars.length > 0) {
-      // Calculate min and max prices from search results
-      const prices = data.cars.map(car => car.price || 0).filter(p => p > 0);
-      if (prices.length > 0) {
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        // Set price range to accommodate all search results (with some padding)
-        const newPriceRange = [Math.max(0, Math.floor(minPrice * 0.9)), Math.ceil(maxPrice * 1.1)];
-        setPriceRange(newPriceRange);
-        console.log("Price range adjusted for search results:", newPriceRange, "based on prices:", prices);
-      }
-    }
-  }, [hasSearchParams, data?.cars]);
+  // Filter functionality commented out
+  // useEffect(() => {
+  //   if (hasSearchParams && data?.cars && data.cars.length > 0) {
+  //     // Calculate min and max prices from search results
+  //     const prices = data.cars.map(car => car.price || 0).filter(p => p > 0);
+  //     if (prices.length > 0) {
+  //       const minPrice = Math.min(...prices);
+  //       const maxPrice = Math.max(...prices);
+  //       // Set price range to accommodate all search results (with some padding)
+  //       const newPriceRange = [Math.max(0, Math.floor(minPrice * 0.9)), Math.ceil(maxPrice * 1.1)];
+  //       setPriceRange(newPriceRange);
+  //       console.log("Price range adjusted for search results:", newPriceRange, "based on prices:", prices);
+  //     }
+  //   }
+  // }, [hasSearchParams, data?.cars]);
 
   // Debug: Log search API data
   useEffect(() => {
@@ -149,10 +150,10 @@ export default function CarsCardSection() {
       if (searchCarsQuery.data?.cars && searchCarsQuery.data.cars.length > 0) {
         console.log("Car prices:", searchCarsQuery.data.cars.map(c => ({ name: c.name, price: c.price })));
       }
-      console.log("Current price range:", priceRange);
+      // console.log("Current price range:", priceRange);
       console.log("=========================");
     }
-  }, [hasSearchParams, searchCarsQuery.data, searchCarsQuery.isLoading, searchCarsQuery.isError, pickupLocationId, returnLocationId, pickupDate, returnDate, priceRange]);
+  }, [hasSearchParams, searchCarsQuery.data, searchCarsQuery.isLoading, searchCarsQuery.isError, pickupLocationId, returnLocationId, pickupDate, returnDate]);
 
   // Calculate rental days from search API meta, search params, or booking storage
   useEffect(() => {
@@ -203,11 +204,12 @@ export default function CarsCardSection() {
   }, [pickupDate, returnDate, data?.meta?.rental_period?.days]);
 
   // Get available categories from API data
-  const availableCategories = ["All Categories"];
-  if (data?.cars) {
-    const categories = new Set(data.cars.map(car => car.category).filter(Boolean));
-    availableCategories.push(...Array.from(categories));
-  }
+  // Filter functionality commented out
+  // const availableCategories = ["All Categories"];
+  // if (data?.cars) {
+  //   const categories = new Set(data.cars.map(car => car.category).filter(Boolean));
+  //   availableCategories.push(...Array.from(categories));
+  // }
 
   // Filter and sort cars
   // Note: The hooks (useCars and useSearchCars) already filter by status "available"
@@ -222,76 +224,80 @@ export default function CarsCardSection() {
   });
 
   // Debug: Log cars data
-  useEffect(() => {
-    console.log("=== CARS FILTERING DEBUG ===");
-    console.log("carsToFilter:", carsToFilter);
-    console.log("carsToFilter length:", carsToFilter?.length);
-    console.log("searchTerm:", searchTerm);
-    console.log("selectedCategory:", selectedCategory);
-    console.log("priceRange:", priceRange);
-    if (carsToFilter && carsToFilter.length > 0) {
-      console.log("First car sample:", carsToFilter[0]);
-      console.log("First car price:", carsToFilter[0]?.price);
-      console.log("First car name:", carsToFilter[0]?.name);
-      console.log("First car category:", carsToFilter[0]?.category);
-    }
-    console.log("============================");
-  }, [carsToFilter, searchTerm, selectedCategory, priceRange]);
+  // Filter functionality commented out
+  // useEffect(() => {
+  //   console.log("=== CARS FILTERING DEBUG ===");
+  //   console.log("carsToFilter:", carsToFilter);
+  //   console.log("carsToFilter length:", carsToFilter?.length);
+  //   console.log("searchTerm:", searchTerm);
+  //   console.log("selectedCategory:", selectedCategory);
+  //   console.log("priceRange:", priceRange);
+  //   if (carsToFilter && carsToFilter.length > 0) {
+  //     console.log("First car sample:", carsToFilter[0]);
+  //     console.log("First car price:", carsToFilter[0]?.price);
+  //     console.log("First car name:", carsToFilter[0]?.name);
+  //     console.log("First car category:", carsToFilter[0]?.category);
+  //   }
+  //   console.log("============================");
+  // }, [carsToFilter, searchTerm, selectedCategory, priceRange]);
 
-  const filteredCars = carsToFilter
-    .filter((car) => {
-      // Fix: Allow empty search term to show all cars
-      const matchesSearch = !searchTerm || (car.name
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ?? true);
-      const matchesCategory =
-        selectedCategory === "All Categories" ||
-        car.category === selectedCategory;
-      // Fix: Handle cases where car.price might be undefined or very high
-      const carPrice = car.price || 0;
-      const matchesPrice =
-        carPrice >= priceRange[0] && carPrice <= priceRange[1];
+  // Filter functionality commented out - showing all cars without filtering
+  // const filteredCars = carsToFilter
+  //   .filter((car) => {
+  //     // Fix: Allow empty search term to show all cars
+  //     const matchesSearch = !searchTerm || (car.name
+  //       ?.toLowerCase()
+  //       .includes(searchTerm.toLowerCase()) ?? true);
+  //     const matchesCategory =
+  //       selectedCategory === "All Categories" ||
+  //       car.category === selectedCategory;
+  //     // Fix: Handle cases where car.price might be undefined or very high
+  //     const carPrice = car.price || 0;
+  //     const matchesPrice =
+  //       carPrice >= priceRange[0] && carPrice <= priceRange[1];
 
-      // Debug individual car filtering (only for search results)
-      if (hasSearchParams) {
-        if (!matchesSearch && searchTerm) {
-          console.log(`Car "${car.name}" filtered out by search term "${searchTerm}"`);
-        }
-        if (!matchesCategory) {
-          console.log(`Car "${car.name}" filtered out by category (${car.category} !== ${selectedCategory})`);
-        }
-        if (!matchesPrice) {
-          console.log(`Car "${car.name}" filtered out by price (${carPrice} not in range [${priceRange[0]}, ${priceRange[1]}])`);
-        }
-      }
+  //     // Debug individual car filtering (only for search results)
+  //     if (hasSearchParams) {
+  //       if (!matchesSearch && searchTerm) {
+  //         console.log(`Car "${car.name}" filtered out by search term "${searchTerm}"`);
+  //       }
+  //       if (!matchesCategory) {
+  //         console.log(`Car "${car.name}" filtered out by category (${car.category} !== ${selectedCategory})`);
+  //       }
+  //       if (!matchesPrice) {
+  //         console.log(`Car "${car.name}" filtered out by price (${carPrice} not in range [${priceRange[0]}, ${priceRange[1]}])`);
+  //       }
+  //     }
 
-      return matchesSearch && matchesCategory && matchesPrice;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "Price (Low to High)":
-          return a.price - b.price;
-        case "Price (High to Low)":
-          return b.price - a.price;
-        case "Rating":
-          return b.rating - a.rating;
-        default:
-          return a.name.localeCompare(b.name);
-      }
-    });
+  //     return matchesSearch && matchesCategory && matchesPrice;
+  //   })
+  //   .sort((a, b) => {
+  //     switch (sortBy) {
+  //       case "Price (Low to High)":
+  //         return a.price - b.price;
+  //       case "Price (High to Low)":
+  //         return b.price - a.price;
+  //       case "Rating":
+  //         return b.rating - a.rating;
+  //       default:
+  //         return a.name.localeCompare(b.name);
+  //     }
+  //   });
 
-  const displayedCars = filteredCars;
+  // Show all cars without filtering
+  const displayedCars = carsToFilter;
 
   // Debug: Log filtered results
-  useEffect(() => {
-    if (hasSearchParams) {
-      console.log("=== FILTERED CARS DEBUG ===");
-      console.log("filteredCars length:", filteredCars.length);
-      console.log("displayedCars length:", displayedCars.length);
-      console.log("filteredCars:", filteredCars);
-      console.log("===========================");
-    }
-  }, [filteredCars, displayedCars, hasSearchParams]);
+  // Filter functionality commented out
+  // useEffect(() => {
+  //   if (hasSearchParams) {
+  //     console.log("=== FILTERED CARS DEBUG ===");
+  //     console.log("filteredCars length:", filteredCars.length);
+  //     console.log("displayedCars length:", displayedCars.length);
+  //     console.log("filteredCars:", filteredCars);
+  //     console.log("===========================");
+  //   }
+  // }, [filteredCars, displayedCars, hasSearchParams]);
 
   const pagination = data?.pagination;
 
@@ -301,8 +307,8 @@ export default function CarsCardSection() {
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold">Available Cars</h2>
 
-          <div className="flex items-center gap-4">
-            {/* View Toggle Buttons */}
+          {/* View Toggle and Filters commented out */}
+          {/* <div className="flex items-center gap-4">
             <div className="flex items-center border rounded-lg p-1">
               <Button
                 variant={viewMode === "flex" ? "default" : "ghost"}
@@ -313,18 +319,8 @@ export default function CarsCardSection() {
                 <List className="w-4 h-4" />
                 List
               </Button>
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="gap-2"
-              >
-                <Grid3X3 className="w-4 h-4" />
-                Grid
-              </Button>
             </div>
 
-            {/* Filters Dialog */}
             <FiltersDialog
               isOpen={isFilterOpen}
               onOpenChange={setIsFilterOpen}
@@ -338,18 +334,12 @@ export default function CarsCardSection() {
               sortBy={sortBy}
               onSortByChange={setSortBy}
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Loading State - Skeleton */}
         {isLoading && (
-          <>
-            {viewMode === "grid" ? (
-              <CarGridSkeleton />
-            ) : (
-              <CarFlexSkeleton />
-            )}
-          </>
+          <CarFlexSkeleton />
         )}
 
         {/* Error State */}
@@ -362,23 +352,15 @@ export default function CarsCardSection() {
           </div>
         )}
 
-        {/* Cars Display */}
+        {/* Cars Display - List view only */}
         {!isLoading && !isError && (
           <>
-            {viewMode === "grid" ? (
-              <CarGridView
-                cars={displayedCars}
-                pickupDate={pickupDate}
-                returnDate={returnDate}
-              />
-            ) : (
-              <CarFlexView
-                cars={displayedCars}
-                pickupDate={pickupDate}
-                returnDate={returnDate}
-                rentalDays={rentalDays}
-              />
-            )}
+            <CarFlexView
+              cars={displayedCars}
+              pickupDate={pickupDate}
+              returnDate={returnDate}
+              rentalDays={rentalDays}
+            />
 
             {/* Pagination - Only show for regular cars listing (not search) */}
             {!hasSearchParams && (
@@ -388,19 +370,7 @@ export default function CarsCardSection() {
         )}
 
         {/* No Cars Found */}
-        {!isLoading && !isError && filteredCars.length === 0 && carsToFilter.length > 0 && (
-          <div className="text-center py-20">
-            <p className="text-gray-600 mb-4">
-              No cars match your current filters. Try adjusting your search criteria.
-            </p>
-            <div className="text-sm text-gray-500">
-              <p>Total cars available: {carsToFilter.length}</p>
-              <p>Filtered out by: Search term, Category, or Price range</p>
-            </div>
-          </div>
-        )}
-
-        {!isLoading && !isError && filteredCars.length === 0 && carsToFilter.length === 0 && (
+        {!isLoading && !isError && displayedCars.length === 0 && (
           <div className="text-center py-20">
             <p className="text-muted-foreground">No cars found matching your criteria.</p>
           </div>

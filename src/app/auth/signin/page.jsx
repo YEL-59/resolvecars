@@ -44,14 +44,14 @@ const SignInPageContent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
-  
+
   // Initialize hooks for login and registration
   const {
     form: signInForm,
     mutate: signInMutate,
     isPending: isSignInPending,
   } = useSignIn();
-  
+
   const {
     form: signUpForm,
     mutate: signUpMutate,
@@ -257,12 +257,12 @@ const SignInPageContent = () => {
                               </FormItem>
                             )}
                           />
-                          <Link
+                          {/* <Link
                             href="/auth/forgot-password"
                             className="text-primary hover:underline"
                           >
                             Forgotten your password?
-                          </Link>
+                          </Link> */}
                         </div>
 
                         <Button
@@ -275,7 +275,7 @@ const SignInPageContent = () => {
                       </form>
                     </Form>
 
-                    <div className="relative my-6">
+                    {/* <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t border-border" />
                       </div>
@@ -318,7 +318,7 @@ const SignInPageContent = () => {
                         </svg>
                         Facebook
                       </Button>
-                    </div>
+                    </div> */}
                   </TabsContent>
 
                   {/* Register Tab */}
@@ -517,7 +517,7 @@ const SignInPageContent = () => {
                       </form>
                     </Form>
 
-                    <div className="relative my-6">
+                    {/* <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t border-border" />
                       </div>
@@ -560,7 +560,7 @@ const SignInPageContent = () => {
                         </svg>
                         Facebook
                       </Button>
-                    </div>
+                    </div> */}
                   </TabsContent>
                 </Tabs>
               </CardContent>
