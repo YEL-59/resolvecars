@@ -46,9 +46,9 @@ export default function Step2Customer({ onPrev, onNext }) {
         if (phoneValue) {
           form.setValue("phone", phoneValue);
         }
-        if (user.flight_number) {
-          form.setValue("flightNumber", user.flight_number);
-        }
+        // if (user.flight_number) {
+        //   form.setValue("flightNumber", user.flight_number);
+        // }
       }
     }
   }, [userData, form]);
@@ -147,7 +147,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                 )}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="flightNumber"
@@ -161,7 +161,7 @@ export default function Step2Customer({ onPrev, onNext }) {
                   </FormItem>
                 )}
               />
-            </div>
+            </div> */}
           </div>
         </div>
         {/* Driver and address information removed per minimal requirements */}

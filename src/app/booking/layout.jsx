@@ -51,14 +51,14 @@ export default function BookingLayout({ children }) {
               >
                 ← Back to Cars
               </Link>
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" className="h-8 w-8">
                   <Heart className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="icon" className="h-8 w-8">
                   <Share2 className="h-4 w-4" />
                 </Button>
-              </div>
+              </div> */}
             </div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">Complete Your Booking</h1>

@@ -307,7 +307,7 @@ export default function Step3Payment({ onPrev, onNext }) {
     } = calculateTotal();
     const installmentAmount = (total / 3).toFixed(2);
 
-    // Prefill form with step 2 data
+    // Prefill form with step 2 data and auto-select payment method
     useEffect(() => {
         if (step2Data) {
             if (step2Data.firstName) {
@@ -322,6 +322,12 @@ export default function Step3Payment({ onPrev, onNext }) {
             if (step2Data.phone) {
                 form.setValue("phone", step2Data.phone);
             }
+        }
+
+        // Auto-select credit card as payment method if not already set
+        const currentPaymentMethod = form.getValues("paymentMethod");
+        if (!currentPaymentMethod) {
+            form.setValue("paymentMethod", "credit");
         }
     }, [step2Data, form]);
 
@@ -460,7 +466,33 @@ export default function Step3Payment({ onPrev, onNext }) {
     const handleNext = async (e) => {
         e.preventDefault();
 
+        // Get form values
         const paymentMethod = form.watch("paymentMethod");
+        const termsAccepted = form.watch("termsAccepted");
+        const newsletterSubscribe = form.watch("newsletterSubscribe");
+        const clubOk = form.watch("clubOk");
+
+        // Validate payment method selection
+        if (!paymentMethod) {
+            toast.error("Please select a payment method by clicking on 'Select type of payment'");
+            return;
+        }
+
+        // Validate all 3 checkboxes are checked
+        if (!termsAccepted) {
+            toast.error("Please accept the General Terms and Conditions to continue");
+            return;
+        }
+
+        if (!newsletterSubscribe) {
+            toast.error("Please accept the newsletter subscription to continue");
+            return;
+        }
+
+        if (!clubOk) {
+            toast.error("Please accept the Club OK terms to continue");
+            return;
+        }
 
         // If credit card is selected, process Stripe payment
         if (paymentMethod === "credit") {
@@ -775,10 +807,10 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             <FormLabel>Contact phone number *</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🇺🇸</span>
+                                                    {/* <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🇺🇸</span> */}
                                                     <Input
                                                         placeholder="+1 (508) 614-8823"
-                                                        className="pl-10"
+                                                        className="pl-2"
                                                         {...field}
                                                         value={field.value || ""}
                                                     />
