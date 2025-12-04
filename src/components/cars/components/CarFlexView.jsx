@@ -382,7 +382,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                   {plansWithPricing.map((plan) => {
                     // Determine header color based on plan type
                     const isStandard = plan.name.toLowerCase() === "standard";
-                    const headerBg = isStandard ? "bg-gray-700" : "bg-red-400";
+                    const headerBg = isStandard ? "bg-red-400" : "bg-red-400";
 
                     return (
                       <div
