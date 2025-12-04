@@ -178,10 +178,10 @@ export default function Navbar() {
           ) : (
             <div className="hidden md:flex items-center space-x-3">
               <Button variant="ghost" asChild>
-                <Link href="/auth/signin">Sign In</Link>
+                <Link href="/auth">Sign In</Link>
               </Button>
               <Button asChild>
-                <Link href="/auth/signup">Sign Up</Link>
+                <Link href="/auth?tab=register">Sign Up</Link>
               </Button>
             </div>
           )}
@@ -232,10 +232,10 @@ export default function Navbar() {
                     ) : (
                       <div className="flex items-center gap-3 mt-2">
                         <Button variant="ghost" asChild>
-                          <Link href="/auth/signin">Sign In</Link>
+                          <Link href="/auth">Sign In</Link>
                         </Button>
                         <Button asChild>
-                          <Link href="/auth/signup">Sign Up</Link>
+                          <Link href="/auth">Sign Up</Link>
                         </Button>
                       </div>
                     )}

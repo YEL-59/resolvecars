@@ -29,7 +29,7 @@ export default function ResetPasswordClient({ email = "your@email.com" }) {
       setError("Passwords do not match.");
       return;
     }
-    router.push("/auth/signin");
+    router.push("/auth");
   };
 
   return (
@@ -94,7 +94,7 @@ export default function ResetPasswordClient({ email = "your@email.com" }) {
 
         <div className="text-sm text-muted-foreground text-center">
           Remembered your password? {" "}
-          <Link href="/auth/signin" className="text-primary hover:underline">
+          <Link href="/auth" className="text-primary hover:underline">
             Sign In
           </Link>
         </div>

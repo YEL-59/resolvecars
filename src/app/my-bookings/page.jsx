@@ -64,7 +64,7 @@ function MyBookingsContent() {
     const token = userStorage.getToken();
     
     if (!userData || !token) {
-      router.push("/auth/signin");
+      router.push("/auth");
       return;
     }
     

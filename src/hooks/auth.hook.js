@@ -45,7 +45,7 @@ export const useSignUp = () => {
       toast.success(data?.message || "User registered successfully");
       // Stay on the same page but switch to login tab
       // The page will handle tab switching via URL or state if needed
-      router.push("/auth/signin?tab=login");
+      router.push("/auth");
     },
     onError: (error) => {
       const message =
@@ -262,7 +262,7 @@ export const useResetPassword = () => {
     },
     onSuccess: (data) => {
       toast.success(data?.message || "Password reset successfully");
-      router.push("/auth/signin");
+      router.push("/auth");
     },
     onError: (error) => {
       const message =
@@ -338,7 +338,7 @@ export const useSignOut = () => {
         window.dispatchEvent(new Event("userLogout"));
       }
       toast.success("Signed out successfully");
-      router.push("/auth/signin");
+      router.push("/auth");
       router.refresh();
     },
     onError: (error) => {
@@ -350,7 +350,7 @@ export const useSignOut = () => {
         window.dispatchEvent(new Event("userLogout"));
       }
       toast.error(error?.response?.data?.message || "Failed to sign out");
-      router.push("/auth/signin");
+      router.push("/auth");
       router.refresh();
     },
   });

@@ -305,7 +305,7 @@ const FeaturedSection = () => {
             <Button
               onClick={() => {
                 setShowLoginDialog(false);
-                router.push("/auth/signin");
+                router.push("/auth");
               }}
               className="bg-yellow-400 hover:bg-yellow-500 text-black"
             >

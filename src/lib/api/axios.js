@@ -46,7 +46,7 @@ axiosPrivate.interceptors.response.use(
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("auth_token");
-        window.location.href = "/auth/signin";
+        window.location.href = "/auth";
       }
     }
     return Promise.reject(error);

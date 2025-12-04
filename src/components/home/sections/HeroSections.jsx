@@ -29,6 +29,7 @@ import { bookingStorage } from "@/lib/bookingStorage";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useLocations } from "@/hooks/locations.hook";
+import Link from "next/link";
 
 // Time Selector Component
 const TimeSelector = ({ value, onChange, label }) => {
@@ -520,20 +521,22 @@ const HeroSections = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button
+            <Link href="/cars">   <Button
               size="lg"
               className="bg-primary hover:bg-primary/90 text-white px-8 py-3 text-lg"
             >
               Explore Our Fleet
               <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-            <Button
+            </Button></Link>
+
+            <Link href="/about">   <Button
               size="lg"
               variant="outline"
               className="bg-white/10 hover:bg-white/20 border-white text-white px-8 py-3 text-lg"
             >
               Learn More
             </Button>
+            </Link>
           </div>
 
           {/* Search Form */}
