@@ -3,14 +3,35 @@
 import { useState, Suspense } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Info, Check, Calendar as CalendarIcon, Star, LogIn } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Users,
+  Info,
+  Check,
+  Calendar as CalendarIcon,
+  Star,
+  LogIn,
+} from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { userStorage } from "@/lib/userStorage";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { isCarUnavailable, getCarPriceForDateRange, getCarPriceForDate, getCarPriceForCurrentDate, transformPackageToPlan, formatDateDisplay } from "../helpers/carHelpers";
+import {
+  isCarUnavailable,
+  getCarPriceForDateRange,
+  getCarPriceForDate,
+  getCarPriceForCurrentDate,
+  transformPackageToPlan,
+  formatDateDisplay,
+} from "../helpers/carHelpers";
 
 // Internal component that uses useSearchParams
 function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
@@ -25,30 +46,38 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
         const unavailable = isCarUnavailable(car);
 
         // Get dynamic car price based on selected dates or current date
-        const dynamicCarPrice = pickupDate && returnDate
-          ? getCarPriceForDateRange(car, pickupDate, returnDate)
-          : pickupDate
+        const dynamicCarPrice =
+          pickupDate && returnDate
+            ? getCarPriceForDateRange(car, pickupDate, returnDate)
+            : pickupDate
             ? getCarPriceForDate(car, pickupDate)
             : getCarPriceForCurrentDate(car); // Use current date if no search params
 
         // Get packages from API data or use default pricing plans
-        const carPackages = car.packages && car.packages.length > 0
-          ? car.packages
-          : [
-            {
-              package_type: "premium",
-              package_type_display: "Premium",
-              features: ["Premium coverage included", "Free cancellation and modification", "No Excess", "Fuel tank full/full", "Refundable"],
-              price_per_day: car.price || 0,
-              original_price_per_day: car.originalPrice || car.price || 0,
-              discount_percentage: car.discount || 0,
-              has_discount: car.discount > 0,
-            }
-          ];
+        const carPackages =
+          car.packages && car.packages.length > 0
+            ? car.packages
+            : [
+                {
+                  package_type: "premium",
+                  package_type_display: "Premium",
+                  features: [
+                    "Premium coverage included",
+                    "Free cancellation and modification",
+                    "No Excess",
+                    "Fuel tank full/full",
+                    "Refundable",
+                  ],
+                  price_per_day: car.price || 0,
+                  original_price_per_day: car.originalPrice || car.price || 0,
+                  discount_percentage: car.discount || 0,
+                  has_discount: car.discount > 0,
+                },
+              ];
 
         // Transform packages to pricing plans format
         const plansWithPricing = carPackages
-          .filter(pkg => pkg.is_active !== false) // Only show active packages
+          .filter((pkg) => pkg.is_active !== false) // Only show active packages
           .map((pkg, index) => {
             const plan = transformPackageToPlan(pkg, index);
 
@@ -58,11 +87,19 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
 
             if (rentalCalc) {
               // Use API calculated prices
-              currentPrice = rentalCalc.daily_rate || rentalCalc.base_rental_cost || plan.pricePerDay || 0;
-              totalPrice = rentalCalc.base_rental_cost || (currentPrice * (rentalCalc.rental_days || rentalDays));
+              currentPrice =
+                rentalCalc.daily_rate ||
+                rentalCalc.base_rental_cost ||
+                plan.pricePerDay ||
+                0;
+              totalPrice =
+                rentalCalc.base_rental_cost ||
+                currentPrice * (rentalCalc.rental_days || rentalDays);
             } else {
               // Calculate manually
-              currentPrice = plan.pricePerDay || (plan.originalPrice * (1 - plan.discount / 100));
+              currentPrice =
+                plan.pricePerDay ||
+                plan.originalPrice * (1 - plan.discount / 100);
               totalPrice = currentPrice * rentalDays;
             }
 
@@ -75,17 +112,25 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
           });
 
         // Get transmission display (M for manual, A for automatic)
-        const transmissionDisplay = (car.transmission || car.model?.transmission_type) === "manual" ? "M" : "A";
+        const transmissionDisplay =
+          (car.transmission || car.model?.transmission_type) === "manual"
+            ? "M"
+            : "A";
         // Get fuel type
-        const fuelType = car.fuel || car.fuelType || car.model?.fuel_type || "gasoline";
+        const fuelType =
+          car.fuel || car.fuelType || car.model?.fuel_type || "gasoline";
         // Get car year
         const carYear = car.year || car.model?.year;
         // Get car name
-        const carName = car.name || `${car.model?.make || ""} ${car.model?.model || ""}`.trim() || "Car";
+        const carName =
+          car.name ||
+          `${car.model?.make || ""} ${car.model?.model || ""}`.trim() ||
+          "Car";
         // Get car type
         const carType = car.type || car.model?.car_type?.name || "";
         // Get car image
-        const carImage = car.image || car.image_url || "/assets/cars/ridecard1.png";
+        const carImage =
+          car.image || car.image_url || "/assets/cars/ridecard1.png";
         // Get passengers
         const passengers = car.passengers || car.model?.seats || 0;
         // Get rating
@@ -98,19 +143,31 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
         // First, try to get from pricing.rental_calculation (from search API)
         if (car.pricing?.rental_calculation?.daily_rate) {
           basePriceData = {
-            price_per_day: parseFloat(car.pricing.rental_calculation.daily_rate),
-            display_price: `$${parseFloat(car.pricing.rental_calculation.daily_rate).toFixed(2)}`,
+            price_per_day: parseFloat(
+              car.pricing.rental_calculation.daily_rate
+            ),
+            display_price: `$${parseFloat(
+              car.pricing.rental_calculation.daily_rate
+            ).toFixed(2)}`,
             start_date: null,
             end_date: null,
           };
         }
         // Second, try to get from model.car_prices array (active price range)
-        else if (car.model?.car_prices && Array.isArray(car.model.car_prices) && car.model.car_prices.length > 0) {
-          const activePrice = car.model.car_prices.find(p => p.is_active !== false) || car.model.car_prices[0];
+        else if (
+          car.model?.car_prices &&
+          Array.isArray(car.model.car_prices) &&
+          car.model.car_prices.length > 0
+        ) {
+          const activePrice =
+            car.model.car_prices.find((p) => p.is_active !== false) ||
+            car.model.car_prices[0];
           if (activePrice) {
             basePriceData = {
               price_per_day: parseFloat(activePrice.price_per_day || 0),
-              display_price: activePrice.display_price || `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
+              display_price:
+                activePrice.display_price ||
+                `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
               start_date: activePrice.start_date,
               end_date: activePrice.end_date,
             };
@@ -120,7 +177,9 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
         else if (dynamicCarPrice) {
           basePriceData = {
             price_per_day: parseFloat(dynamicCarPrice.price_per_day || 0),
-            display_price: dynamicCarPrice.display_price || `$${parseFloat(dynamicCarPrice.price_per_day || 0).toFixed(2)}`,
+            display_price:
+              dynamicCarPrice.display_price ||
+              `$${parseFloat(dynamicCarPrice.price_per_day || 0).toFixed(2)}`,
             start_date: dynamicCarPrice.start_date,
             end_date: dynamicCarPrice.end_date,
           };
@@ -139,16 +198,23 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
         const activeCarPrice = basePriceData;
 
         // Get available dates from car data (API provides available_start_date and available_end_date)
-        const availableStartDate = car.available_start_date || basePriceData?.start_date || dynamicCarPrice?.start_date;
-        const availableEndDate = car.available_end_date || basePriceData?.end_date || dynamicCarPrice?.end_date;
+        const availableStartDate =
+          car.available_start_date ||
+          basePriceData?.start_date ||
+          dynamicCarPrice?.start_date;
+        const availableEndDate =
+          car.available_end_date ||
+          basePriceData?.end_date ||
+          dynamicCarPrice?.end_date;
 
         return (
           <div
             key={car.id}
-            className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${unavailable
-              ? "opacity-50 grayscale cursor-not-allowed"
-              : "hover:shadow-lg"
-              }`}
+            className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${
+              unavailable
+                ? "opacity-50 grayscale cursor-not-allowed"
+                : "hover:shadow-lg"
+            }`}
           >
             <div className="flex flex-col lg:flex-row">
               {/* Left Section - Car Details */}
@@ -213,8 +279,9 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                           <div className="text-right">
                             <span className="text-xl font-bold text-gray-900">
                               {activeCarPrice.display_price ||
-                                `$${activeCarPrice.price_per_day?.toFixed(2) ||
-                                "0.00"
+                                `$${
+                                  activeCarPrice.price_per_day?.toFixed(2) ||
+                                  "0.00"
                                 }`}
                             </span>
                             <p className="text-xs text-gray-500 font-normal mt-0.5">
@@ -247,16 +314,27 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                         {car.pricing?.rental_calculation && (
                           <div className="pt-2 border-t border-gray-200 mt-2">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-gray-600">Base Rental Cost:</span>
+                              <span className="text-gray-600">
+                                Base Rental Cost:
+                              </span>
                               <span className="text-gray-900 font-semibold">
-                                ${parseFloat(car.pricing.rental_calculation.base_rental_cost || 0).toFixed(2)}
+                                $
+                                {parseFloat(
+                                  car.pricing.rental_calculation
+                                    .base_rental_cost || 0
+                                ).toFixed(2)}
                               </span>
                             </div>
                             {car.pricing.rental_calculation.rental_days && (
                               <div className="flex items-center justify-between text-xs mt-1">
-                                <span className="text-gray-600">Rental Days:</span>
+                                <span className="text-gray-600">
+                                  Rental Days:
+                                </span>
                                 <span className="text-gray-900 font-semibold">
-                                  {parseFloat(car.pricing.rental_calculation.rental_days).toFixed(2)} days
+                                  {parseFloat(
+                                    car.pricing.rental_calculation.rental_days
+                                  ).toFixed(2)}{" "}
+                                  days
                                 </span>
                               </div>
                             )}
@@ -358,7 +436,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                 </div>
 
                 {/* Rating */}
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
                       <Star
@@ -373,7 +451,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                   <span className="text-sm text-gray-500">
                     ({rating.toFixed(1)})
                   </span>
-                </div>
+                </div> */}
               </div>
 
               {/* Right Section - Pricing Plan Cards */}
@@ -462,21 +540,39 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               }
 
                               // Validate required search fields
-                              const existingStep1 = bookingStorage.getStep("step1") || {};
+                              const existingStep1 =
+                                bookingStorage.getStep("step1") || {};
 
                               // Check for required fields from bookingStorage or URL params
-                              const hasPickupDate = existingStep1.pickupDate || pickupDate || searchParams.get("pickup_date");
-                              const hasReturnDate = existingStep1.dropoffDate || existingStep1.returnDate || returnDate || searchParams.get("return_date");
-                              const hasPickupLocation = existingStep1.pickupLocationId || existingStep1.pickup_location_id || searchParams.get("pickup_location_id");
+                              const hasPickupDate =
+                                existingStep1.pickupDate ||
+                                pickupDate ||
+                                searchParams.get("pickup_date");
+                              const hasReturnDate =
+                                existingStep1.dropoffDate ||
+                                existingStep1.returnDate ||
+                                returnDate ||
+                                searchParams.get("return_date");
+                              const hasPickupLocation =
+                                existingStep1.pickupLocationId ||
+                                existingStep1.pickup_location_id ||
+                                searchParams.get("pickup_location_id");
 
                               // Show toast if required fields are missing
-                              if (!hasPickupDate || !hasReturnDate || !hasPickupLocation) {
-                                toast.error("Please complete the search form first. Pickup date, return date, and location are required to continue with booking.", {
-                                  duration: 5000,
-                                  style: {
-                                    maxWidth: '500px',
-                                  },
-                                });
+                              if (
+                                !hasPickupDate ||
+                                !hasReturnDate ||
+                                !hasPickupLocation
+                              ) {
+                                toast.error(
+                                  "Please complete the search form first. Pickup date, return date, and location are required to continue with booking.",
+                                  {
+                                    duration: 5000,
+                                    style: {
+                                      maxWidth: "500px",
+                                    },
+                                  }
+                                );
                                 // Scroll to search form
                                 router.push("/cars");
                                 return;
@@ -514,10 +610,11 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               router.push("/booking/step1");
                             }
                           }}
-                          className={`m-4 font-medium py-3 rounded ${unavailable
-                            ? "bg-gray-400 cursor-not-allowed text-white"
-                            : "bg-red-400 hover:bg-red-500 text-white"
-                            }`}
+                          className={`m-4 font-medium py-3 rounded ${
+                            unavailable
+                              ? "bg-gray-400 cursor-not-allowed text-white"
+                              : "bg-red-400 hover:bg-red-500 text-white"
+                          }`}
                         >
                           {unavailable ? "UNAVAILABLE" : "Continue"}
                         </Button>
@@ -542,14 +639,12 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
               <DialogTitle>Login Required</DialogTitle>
             </div>
             <DialogDescription>
-              You need to be logged in to continue with your booking. Please sign in or create an account to proceed.
+              You need to be logged in to continue with your booking. Please
+              sign in or create an account to proceed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setShowLoginDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowLoginDialog(false)}>
               Cancel
             </Button>
             <Button
@@ -570,15 +665,26 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
 }
 
 // Main component with Suspense boundary
-export default function CarFlexView({ cars, pickupDate, returnDate, rentalDays }) {
+export default function CarFlexView({
+  cars,
+  pickupDate,
+  returnDate,
+  rentalDays,
+}) {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    }>
-      <CarFlexViewContent cars={cars} pickupDate={pickupDate} returnDate={returnDate} rentalDays={rentalDays} />
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      }
+    >
+      <CarFlexViewContent
+        cars={cars}
+        pickupDate={pickupDate}
+        returnDate={returnDate}
+        rentalDays={rentalDays}
+      />
     </Suspense>
   );
 }
-
