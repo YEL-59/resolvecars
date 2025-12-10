@@ -1,7 +1,9 @@
 import axios from "axios";
 
 // Base URL for the API
-const BASE_URL = "https://resolvecars.softvencefsd.xyz/api/v1";
+const BASE_URL = "https://resolvecars.svaalpha.com/api/v1";
+
+//https://resolvecars.softvencefsd.xyz/api/v1
 
 // Create axios instance for public endpoints (no auth token required)
 export const axiosPublic = axios.create({
@@ -25,12 +27,13 @@ export const axiosPrivate = axios.create({
 axiosPrivate.interceptors.request.use(
   (config) => {
     // Get token from localStorage or wherever you store it
-    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-    
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -62,5 +65,3 @@ axiosPublic.interceptors.response.use(
 );
 
 export default axiosPublic;
-
-
