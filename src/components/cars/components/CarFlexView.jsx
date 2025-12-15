@@ -50,30 +50,30 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
           pickupDate && returnDate
             ? getCarPriceForDateRange(car, pickupDate, returnDate)
             : pickupDate
-            ? getCarPriceForDate(car, pickupDate)
-            : getCarPriceForCurrentDate(car); // Use current date if no search params
+              ? getCarPriceForDate(car, pickupDate)
+              : getCarPriceForCurrentDate(car); // Use current date if no search params
 
         // Get packages from API data or use default pricing plans
         const carPackages =
           car.packages && car.packages.length > 0
             ? car.packages
             : [
-                {
-                  package_type: "premium",
-                  package_type_display: "Premium",
-                  features: [
-                    "Premium coverage included",
-                    "Free cancellation and modification",
-                    "No Excess",
-                    "Fuel tank full/full",
-                    "Refundable",
-                  ],
-                  price_per_day: car.price || 0,
-                  original_price_per_day: car.originalPrice || car.price || 0,
-                  discount_percentage: car.discount || 0,
-                  has_discount: car.discount > 0,
-                },
-              ];
+              {
+                package_type: "premium",
+                package_type_display: "Premium",
+                features: [
+                  "Premium coverage included",
+                  "Free cancellation and modification",
+                  "No Excess",
+                  "Fuel tank full/full",
+                  "Refundable",
+                ],
+                price_per_day: car.price || 0,
+                original_price_per_day: car.originalPrice || car.price || 0,
+                discount_percentage: car.discount || 0,
+                has_discount: car.discount > 0,
+              },
+            ];
 
         // Transform packages to pricing plans format
         const plansWithPricing = carPackages
@@ -210,11 +210,10 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
         return (
           <div
             key={car.id}
-            className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${
-              unavailable
+            className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${unavailable
                 ? "opacity-50 grayscale cursor-not-allowed"
                 : "hover:shadow-lg"
-            }`}
+              }`}
           >
             <div className="flex flex-col lg:flex-row">
               {/* Left Section - Car Details */}
@@ -279,9 +278,8 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                           <div className="text-right">
                             <span className="text-xl font-bold text-gray-900">
                               {activeCarPrice.display_price ||
-                                `$${
-                                  activeCarPrice.price_per_day?.toFixed(2) ||
-                                  "0.00"
+                                `$${activeCarPrice.price_per_day?.toFixed(2) ||
+                                "0.00"
                                 }`}
                             </span>
                             <p className="text-xs text-gray-500 font-normal mt-0.5">
@@ -610,11 +608,10 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               router.push("/booking/step1");
                             }
                           }}
-                          className={`m-4 font-medium py-3 rounded ${
-                            unavailable
+                          className={`m-4 font-medium py-3 rounded ${unavailable
                               ? "bg-gray-400 cursor-not-allowed text-white"
                               : "bg-red-400 hover:bg-red-500 text-white"
-                          }`}
+                            }`}
                         >
                           {unavailable ? "UNAVAILABLE" : "Continue"}
                         </Button>
