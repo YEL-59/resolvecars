@@ -158,7 +158,8 @@ const SearchableLocationInput = ({
     onChange(displayName);
     setSelectedLocationId(location.id);
     if (onLocationSelect) {
-      onLocationSelect(location.id);
+      // Pass the full location object so parent can access id and price
+      onLocationSelect(location);
     }
     setShowSuggestions(false);
   };
@@ -252,6 +253,8 @@ const CarsHeroSection = () => {
   const [returnLocation, setReturnLocation] = useState("");
   const [pickupLocationId, setPickupLocationId] = useState(null);
   const [returnLocationId, setReturnLocationId] = useState(null);
+  const [pickupLocationPrice, setPickupLocationPrice] = useState(0);
+  const [returnLocationPrice, setReturnLocationPrice] = useState(0);
   const [sameStore, setSameStore] = useState(true);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
@@ -275,9 +278,17 @@ const CarsHeroSection = () => {
         if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
         if (step1.dropoffLocation) {
           setReturnLocation(step1.dropoffLocation);
-          setSameStore(step1.pickupLocation === step1.dropoffLocation);
         }
         if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
+        // Load location prices
+        if (step1.pickupLocationPrice) setPickupLocationPrice(step1.pickupLocationPrice);
+        if (step1.returnLocationPrice) setReturnLocationPrice(step1.returnLocationPrice);
+        // Load sameStore flag
+        if (typeof step1.sameStore === 'boolean') {
+          setSameStore(step1.sameStore);
+        } else if (step1.pickupLocation && step1.dropoffLocation) {
+          setSameStore(step1.pickupLocation === step1.dropoffLocation);
+        }
       } catch { }
     }
   }, []);
@@ -333,6 +344,8 @@ const CarsHeroSection = () => {
     setReturnLocation("");
     setPickupLocationId(null);
     setReturnLocationId(null);
+    setPickupLocationPrice(0);
+    setReturnLocationPrice(0);
     setSameStore(true);
     setAgeConfirmed(false);
 
@@ -346,8 +359,11 @@ const CarsHeroSection = () => {
       dropoffDate: "",
       pickupLocation: "",
       pickupLocationId: null,
+      pickupLocationPrice: 0,
       dropoffLocation: "",
       dropoffLocationId: null,
+      returnLocationPrice: 0,
+      locationFee: 0,
       pickup_time: "",
       return_time: "",
       requirements: "",
@@ -413,13 +429,29 @@ const CarsHeroSection = () => {
       }
     };
 
+    // Calculate location fee: same location = single price, different = sum of both
+    const finalPickupPrice = pickupLocationPrice || 0;
+    const finalReturnPrice = sameStore ? 0 : (returnLocationPrice || 0);
+    const locationFee = finalPickupPrice + finalReturnPrice;
+
+    console.log("CarsHeroSection: Storing location fee data:", {
+      pickupLocationPrice: finalPickupPrice,
+      returnLocationPrice: finalReturnPrice,
+      locationFee: locationFee,
+      sameStore: sameStore,
+    });
+
     bookingStorage.updateStep("step1", {
       pickupDate: toISO(pickupDate, pickupTime),
       dropoffDate: toISO(returnDate, returnTime),
       pickupLocation: pickupLocation,
       pickupLocationId: finalPickupId,
+      pickupLocationPrice: finalPickupPrice,
       dropoffLocation: sameStore ? pickupLocation : returnLocation,
       dropoffLocationId: finalReturnId,
+      returnLocationPrice: sameStore ? 0 : finalReturnPrice,
+      locationFee: locationFee,
+      sameStore: sameStore,
       pickup_time: formattedPickupTime,
       return_time: formattedReturnTime,
       requirements: "",
@@ -544,7 +576,15 @@ const CarsHeroSection = () => {
               <SearchableLocationInput
                 value={pickupLocation}
                 onChange={setPickupLocation}
-                onLocationSelect={setPickupLocationId}
+                onLocationSelect={(location) => {
+                  if (location) {
+                    setPickupLocationId(location.id);
+                    setPickupLocationPrice(location.price || 0);
+                  } else {
+                    setPickupLocationId(null);
+                    setPickupLocationPrice(0);
+                  }
+                }}
                 placeholder="City, airport..."
               />
             </div>
@@ -558,7 +598,15 @@ const CarsHeroSection = () => {
                 <SearchableLocationInput
                   value={returnLocation}
                   onChange={setReturnLocation}
-                  onLocationSelect={setReturnLocationId}
+                  onLocationSelect={(location) => {
+                    if (location) {
+                      setReturnLocationId(location.id);
+                      setReturnLocationPrice(location.price || 0);
+                    } else {
+                      setReturnLocationId(null);
+                      setReturnLocationPrice(0);
+                    }
+                  }}
                   placeholder="City, airport..."
                 />
               </div>

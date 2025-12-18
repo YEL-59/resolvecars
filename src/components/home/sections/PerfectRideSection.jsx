@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon } from "lucide-react";
+import Link from "next/link";
 
 const PerfectRideSection = () => {
   const rideOptions = [
@@ -51,51 +52,53 @@ const PerfectRideSection = () => {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {rideOptions.map((option) => (
-            <Card
-              key={option.id}
-              className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white overflow-hidden p-0"
-            >
-              <CardContent className="p-0">
-                {/* Image Container */}
-                <div className="relative h-64 md:h-72 bg-transparent overflow-hidden">
-                  {/* Badge */}
-                  <div
-                    className={`absolute top-4 right-4 z-10 ${option.badgeColor} text-white px-3 py-1 rounded-full text-sm font-medium`}
-                  >
-                    {option.badge}
+            <Link href={`/cars`} key={option.id}>
+              <Card
+                key={option.id}
+                className="group hover:shadow-2xl transition-all duration-300 border-0 bg-white overflow-hidden p-0"
+              >
+                <CardContent className="p-0">
+                  {/* Image Container */}
+                  <div className="relative h-64 md:h-72 bg-transparent overflow-hidden">
+                    {/* Badge */}
+                    <div
+                      className={`absolute top-4 right-4 z-10 ${option.badgeColor} text-white px-3 py-1 rounded-full text-sm font-medium`}
+                    >
+                      {option.badge}
+                    </div>
+
+                    {/* Vehicle Image */}
+                    <div className="relative w-full h-full flex items-center justify-center p-8">
+                      <Image
+                        src={option.image}
+                        alt={option.title}
+                        width={300}
+                        height={200}
+                        className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-300"
+                      />
+                    </div>
                   </div>
 
-                  {/* Vehicle Image */}
-                  <div className="relative w-full h-full flex items-center justify-center p-8">
-                    <Image
-                      src={option.image}
-                      alt={option.title}
-                      width={300}
-                      height={200}
-                      className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 text-start">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    {option.title}
-                  </h3>
-                  <p className="text-gray-600 mb-4">{option.description}</p>
-                  <p className="text-xl font-semibold text-primary mb-6 cursor-pointer">
+                  {/* Content */}
+                  <div className="p-6 text-start">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                      {option.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4">{option.description}</p>
+                    {/* <p className="text-xl font-semibold text-primary mb-6 cursor-pointer">
                     {option.price}
                     <ArrowRightIcon className="inline-block w-5 h-5 ml-2" />
-                  </p>
-                  {/* <Button
+                  </p> */}
+                    {/* <Button
                     className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3"
                     size="lg"
                   >
                     Book Now
                   </Button> */}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
 

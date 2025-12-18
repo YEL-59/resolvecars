@@ -153,7 +153,44 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
             end_date: null,
           };
         }
-        // Second, try to get from model.car_prices array (active price range)
+        // Second, try to get from car.current_price (currently active price)
+        else if (car.current_price && car.current_price.price_per_day) {
+          basePriceData = {
+            price_per_day: parseFloat(car.current_price.price_per_day || 0),
+            display_price:
+              car.current_price.display_price ||
+              `$${parseFloat(car.current_price.price_per_day || 0).toFixed(2)}`,
+            start_date: car.current_price.start_date,
+            end_date: car.current_price.end_date,
+            notes: car.current_price.notes,
+            date_range: null, // Will be formatted from start/end dates
+          };
+        }
+        // Third, try to get from car.car_prices array (direct on car object)
+        else if (
+          car.car_prices &&
+          Array.isArray(car.car_prices) &&
+          car.car_prices.length > 0
+        ) {
+          // Prefer is_currently_active, then is_active, then first item
+          const activePrice =
+            car.car_prices.find((p) => p.is_currently_active) ||
+            car.car_prices.find((p) => p.is_active !== false) ||
+            car.car_prices[0];
+          if (activePrice) {
+            basePriceData = {
+              price_per_day: parseFloat(activePrice.price_per_day || 0),
+              display_price:
+                activePrice.display_price ||
+                `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
+              start_date: activePrice.start_date,
+              end_date: activePrice.end_date,
+              date_range: activePrice.date_range,
+              notes: activePrice.notes,
+            };
+          }
+        }
+        // Fourth, try to get from model.car_prices array (fallback)
         else if (
           car.model?.car_prices &&
           Array.isArray(car.model.car_prices) &&
@@ -173,7 +210,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
             };
           }
         }
-        // Third, use dynamicCarPrice if available
+        // Fifth, use dynamicCarPrice if available
         else if (dynamicCarPrice) {
           basePriceData = {
             price_per_day: parseFloat(dynamicCarPrice.price_per_day || 0),
@@ -211,8 +248,8 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
           <div
             key={car.id}
             className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${unavailable
-                ? "opacity-50 grayscale cursor-not-allowed"
-                : "hover:shadow-lg"
+              ? "opacity-50 grayscale cursor-not-allowed"
+              : "hover:shadow-lg"
               }`}
           >
             <div className="flex flex-col lg:flex-row">
@@ -261,85 +298,119 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                 {(activeCarPrice || availableStartDate || availableEndDate) && (
                   <div className="mb-4 space-y-3">
                     {/* Base Price Section */}
-                    {activeCarPrice && activeCarPrice.price_per_day > 0 && (
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 p-4 shadow-sm">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                Base Price
-                              </span>
+                    {activeCarPrice && activeCarPrice.price_per_day > 0 && (() => {
+                      // Calculate rental days from start_date and end_date
+                      let rentalDays = 0;
+                      let totalPrice = 0;
+
+                      if (activeCarPrice.start_date && activeCarPrice.end_date) {
+                        const startDate = new Date(activeCarPrice.start_date);
+                        const endDate = new Date(activeCarPrice.end_date);
+                        const diffTime = Math.abs(endDate - startDate);
+                        rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        totalPrice = rentalDays * activeCarPrice.price_per_day;
+                      }
+
+                      return (
+                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 p-4 shadow-sm">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                  Base Price
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 font-normal">
+                                Starting from
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-500 font-normal">
-                              Starting from
-                            </p>
+                            <div className="text-right">
+                              <span className="text-xl font-bold text-gray-900">
+                                {activeCarPrice.display_price ||
+                                  `$${activeCarPrice.price_per_day?.toFixed(2) ||
+                                  "0.00"
+                                  }`}
+                              </span>
+                              <p className="text-xs text-gray-500 font-normal mt-0.5">
+                                {formatDateDisplay(activeCarPrice.start_date)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-xl font-bold text-gray-900">
-                              {activeCarPrice.display_price ||
-                                `$${activeCarPrice.price_per_day?.toFixed(2) ||
-                                "0.00"
-                                }`}
-                            </span>
-                            <p className="text-xs text-gray-500 font-normal mt-0.5">
-                              per day
-                            </p>
-                          </div>
-                        </div>
-                        {/* Show price validity dates if available from car_prices */}
-                        {activeCarPrice.start_date &&
-                          activeCarPrice.end_date && (
+
+                          {/* Show calculated total based on start_date and end_date */}
+                          {/* {rentalDays > 0 && (
+                            <div className="pt-2 border-t border-gray-200 mt-2">
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-gray-600">
+                                  {rentalDays} day{rentalDays > 1 ? 's' : ''} × ${activeCarPrice.price_per_day.toFixed(2)}
+                                </span>
+                                <span className="text-gray-900 font-bold text-base">
+                                  ${totalPrice.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          )} */}
+
+                          {/* Show price validity dates if available from car_prices */}
+                          {/* {(activeCarPrice.date_range || (activeCarPrice.start_date && activeCarPrice.end_date)) && (
                             <div className="pt-2 border-t border-gray-200 mt-2">
                               <div className="flex items-center gap-2">
                                 <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
                                 <span className="text-xs text-gray-600 font-medium">
-                                  Valid from{" "}
-                                  <span className="text-gray-900">
-                                    {formatDateDisplay(
-                                      activeCarPrice.start_date
-                                    )}
-                                  </span>{" "}
-                                  to{" "}
-                                  <span className="text-gray-900">
-                                    {formatDateDisplay(activeCarPrice.end_date)}
-                                  </span>
+                                  {activeCarPrice.date_range ? (
+                                    <>
+                                      Valid: <span className="text-gray-900">{activeCarPrice.date_range}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      Valid from{" "}
+                                      <span className="text-gray-900">
+                                        {formatDateDisplay(activeCarPrice.start_date)}
+                                      </span>{" "}
+                                      to{" "}
+                                      <span className="text-gray-900">
+                                        {formatDateDisplay(activeCarPrice.end_date)}
+                                      </span>
+                                    </>
+                                  )}
                                 </span>
                               </div>
                             </div>
-                          )}
-                        {/* Show pricing info from API if available */}
-                        {car.pricing?.rental_calculation && (
-                          <div className="pt-2 border-t border-gray-200 mt-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-gray-600">
-                                Base Rental Cost:
-                              </span>
-                              <span className="text-gray-900 font-semibold">
-                                $
-                                {parseFloat(
-                                  car.pricing.rental_calculation
-                                    .base_rental_cost || 0
-                                ).toFixed(2)}
-                              </span>
-                            </div>
-                            {car.pricing.rental_calculation.rental_days && (
-                              <div className="flex items-center justify-between text-xs mt-1">
+                          )} */}
+                          {/* Show pricing info from API if available */}
+                          {car.pricing?.rental_calculation && (
+                            <div className="pt-2 border-t border-gray-200 mt-2">
+                              <div className="flex items-center justify-between text-xs">
                                 <span className="text-gray-600">
-                                  Rental Days:
+                                  Base Rental Cost:
                                 </span>
                                 <span className="text-gray-900 font-semibold">
+                                  $
                                   {parseFloat(
-                                    car.pricing.rental_calculation.rental_days
-                                  ).toFixed(2)}{" "}
-                                  days
+                                    car.pricing.rental_calculation
+                                      .base_rental_cost || 0
+                                  ).toFixed(2)}
                                 </span>
                               </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                              {car.pricing.rental_calculation.rental_days && (
+                                <div className="flex items-center justify-between text-xs mt-1">
+                                  <span className="text-gray-600">
+                                    Rental Days:
+                                  </span>
+                                  <span className="text-gray-900 font-semibold">
+                                    {parseFloat(
+                                      car.pricing.rental_calculation.rental_days
+                                    ).toFixed(2)}{" "}
+                                    days
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Available Dates Section */}
                     {(availableStartDate || availableEndDate) && (
@@ -577,6 +648,12 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               }
 
                               bookingStorage.setCar(car);
+                              console.log("CarFlexView: existingStep1 before update:", {
+                                pickupLocationPrice: existingStep1.pickupLocationPrice,
+                                returnLocationPrice: existingStep1.returnLocationPrice,
+                                locationFee: existingStep1.locationFee,
+                                sameStore: existingStep1.sameStore,
+                              });
                               bookingStorage.updateStep("step1", {
                                 ...existingStep1,
                                 protectionPlan: plan.id,
@@ -609,8 +686,8 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                             }
                           }}
                           className={`m-4 font-medium py-3 rounded ${unavailable
-                              ? "bg-gray-400 cursor-not-allowed text-white"
-                              : "bg-red-400 hover:bg-red-500 text-white"
+                            ? "bg-gray-400 cursor-not-allowed text-white"
+                            : "bg-red-400 hover:bg-red-500 text-white"
                             }`}
                         >
                           {unavailable ? "UNAVAILABLE" : "Continue"}

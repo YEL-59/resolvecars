@@ -48,6 +48,9 @@ const transformCarData = (apiCar) => {
     available_date: apiCar.available_date || null, // Preserve available_date for availability checking
     available_start_date: apiCar.available_start_date || null, // Preserve available_start_date for availability checking
     available_end_date: apiCar.available_end_date || null, // Preserve available_end_date for availability checking
+    // Preserve car_prices and current_price from API (for base price display)
+    car_prices: apiCar.car_prices || [],
+    current_price: apiCar.current_price || null,
     // Keep original API data for reference
     _apiData: apiCar,
     packages: packages.map(pkg => ({

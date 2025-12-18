@@ -4,12 +4,20 @@
  * Get car_prices from car object (check multiple locations)
  */
 export const getCarPrices = (car) => {
-  // Check direct model.car_prices
-  if (car?.model?.car_prices && Array.isArray(car.model.car_prices)) {
+  // Check direct car.car_prices (API returns it at top level)
+  if (car?.car_prices && Array.isArray(car.car_prices) && car.car_prices.length > 0) {
+    return car.car_prices;
+  }
+  // Check _apiData.car_prices (from transformed data)
+  if (car?._apiData?.car_prices && Array.isArray(car._apiData.car_prices) && car._apiData.car_prices.length > 0) {
+    return car._apiData.car_prices;
+  }
+  // Check direct model.car_prices (fallback)
+  if (car?.model?.car_prices && Array.isArray(car.model.car_prices) && car.model.car_prices.length > 0) {
     return car.model.car_prices;
   }
-  // Check _apiData.model.car_prices (from transformed data)
-  if (car?._apiData?.model?.car_prices && Array.isArray(car._apiData.model.car_prices)) {
+  // Check _apiData.model.car_prices (from transformed data - fallback)
+  if (car?._apiData?.model?.car_prices && Array.isArray(car._apiData.model.car_prices) && car._apiData.model.car_prices.length > 0) {
     return car._apiData.model.car_prices;
   }
   return null;

@@ -22,7 +22,7 @@ const Footer = () => {
                 resolve<span className="text-white">cars</span>
               </span>
             </Link>
-            
+
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">PHONE HOURS</h3>
               <div className="space-y-2 text-sm opacity-90">
@@ -63,10 +63,10 @@ const Footer = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">INFO</h3>
             <div className="space-y-2 text-sm opacity-90">
-              <Link href="/help" className="block hover:text-white/80 transition-colors">
+              <Link href="/contact" className="block hover:text-white/80 transition-colors">
                 Car Help
               </Link>
-              <Link href="/customer-service" className="block hover:text-white/80 transition-colors">
+              <Link href="/contact" className="block hover:text-white/80 transition-colors">
                 Customer Service
               </Link>
               <Link href="/privacy" className="block hover:text-white/80 transition-colors">
@@ -106,16 +106,16 @@ const Footer = () => {
             <div className="space-y-3">
               <h4 className="font-semibold">Follow Us</h4>
               <div className="flex space-x-3">
-                <Link 
-                  href="https://instagram.com" 
+                <Link
+                  href="https://instagram.com"
                   className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <Instagram className="w-4 h-4" />
                 </Link>
-                <Link 
-                  href="https://youtube.com" 
+                <Link
+                  href="https://youtube.com"
                   className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"

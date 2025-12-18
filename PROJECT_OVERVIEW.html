@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResolveCars - Project Overview</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #0f172a;
+            --accent: #10b981;
+            --warning: #f59e0b;
+            --bg-light: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--secondary);
+            color: white;
+            margin-bottom: 40px;
+            border-radius: 0 0 40px 40px;
+        }
+        
+        header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        
+        header h1 span {
+            color: var(--primary);
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+        
+        .section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section h2 .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 30px 0;
+        }
+        
+        .flow-step {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .flow-step .circle {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+        }
+        
+        .flow-step h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .flow-step p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .flow-arrow {
+            font-size: 2rem;
+            color: var(--primary);
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        
+        .pricing-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border);
+        }
+        
+        .pricing-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .pricing-card h3 .badge {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        
+        .pricing-card h3 .badge.green {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .pricing-card h3 .badge.blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .pricing-example {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+        
+        .pricing-example .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+        
+        .pricing-example .row:last-child {
+            border-bottom: none;
+        }
+        
+        .pricing-example .row.total {
+            border-top: 2px solid var(--secondary);
+            border-bottom: none;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .pricing-example .label {
+            color: var(--text-secondary);
+        }
+        
+        .pricing-example .value {
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .formula-box {
+            background: var(--secondary);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        }
+        
+        .feature-card .icon-box {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .feature-card h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .pages-tree {
+            font-family: 'Courier New', monospace;
+            background: var(--secondary);
+            color: #a5f3fc;
+            padding: 30px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+        
+        .pages-tree .folder {
+            color: #fcd34d;
+        }
+        
+        .pages-tree .file {
+            color: #86efac;
+        }
+        
+        .pages-tree .arrow {
+            color: #64748b;
+        }
+        
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .tech-badge {
+            background: linear-gradient(135deg, var(--secondary), #334155);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary), #8b5cf6);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        
+        .summary-box h2 {
+            color: white;
+            justify-content: center;
+        }
+        
+        .summary-stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat .number {
+            font-size: 3rem;
+            font-weight: 800;
+        }
+        
+        .stat .label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .checklist {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .checklist-item .check {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .flow-diagram {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            .section {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🚗 <span>Resolve</span>Cars</h1>
+        <p>Modern Car Rental Booking Platform</p>
+    </header>
+    
+    <div class="container">
+        <!-- User Journey -->
+        <section class="section">
+            <h2><span class="icon">🔄</span> User Booking Journey</h2>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="circle">🏠</div>
+                    <h4>Home Page</h4>
+                    <p>Search locations & dates</p>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-step">
+                    <div class="circle">🚗</div>
+                    <h4>Cars List</h4>
+                    <p>Browse & select car</p>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-step">
+                    <div class="circle">📋</div>
+                    <h4>Step 1</h4>
+                    <p>Package & extras</p>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-step">
+                    <div class="circle">👤</div>
+                    <h4>Step 2</h4>
+                    <p>Customer details</p>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-step">
+                    <div class="circle">💳</div>
+                    <h4>Step 3</h4>
+                    <p>Payment</p>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-step">
+                    <div class="circle">✅</div>
+                    <h4>Success</h4>
+                    <p>Booking confirmed</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Pricing System -->
+        <section class="section">
+            <h2><span class="icon">💰</span> Pricing System</h2>
+            <div class="pricing-grid">
+                <!-- Location Pricing -->
+                <div class="pricing-card">
+                    <h3>📍 Location Fee <span class="badge green">Dynamic</span></h3>
+                    <p>Location fees are calculated based on pickup and return locations.</p>
+                    
+                    <div class="formula-box">
+                        <strong>Same Location:</strong><br>
+                        Fee = Pickup Location Price<br><br>
+                        <strong>Different Locations:</strong><br>
+                        Fee = Pickup Price + Return Price
+                    </div>
+                    
+                    <div class="pricing-example">
+                        <div class="row">
+                            <span class="label">Pickup (Airport)</span>
+                            <span class="value">$50.00</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Return (Downtown)</span>
+                            <span class="value">$132.00</span>
+                        </div>
+                        <div class="row total">
+                            <span class="label">Location Fee</span>
+                            <span class="value">$182.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Car Rental Pricing -->
+                <div class="pricing-card">
+                    <h3>🚗 Car Rental <span class="badge blue">Per Day</span></h3>
+                    <p>Car rental is calculated based on price per day from API.</p>
+                    
+                    <div class="formula-box">
+                        <strong>Formula:</strong><br>
+                        Total = Days × Price Per Day<br><br>
+                        <strong>Example:</strong><br>
+                        3 days × $505 = $1,515
+                    </div>
+                    
+                    <div class="pricing-example">
+                        <div class="row">
+                            <span class="label">Price Per Day</span>
+                            <span class="value">$505.00</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Rental Period</span>
+                            <span class="value">3 days</span>
+                        </div>
+                        <div class="row total">
+                            <span class="label">Car Rental Total</span>
+                            <span class="value">$1,515.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Addons - Per Booking -->
+                <div class="pricing-card">
+                    <h3>➕ Addons (Per Booking) <span class="badge green">Fixed</span></h3>
+                    <p>One-time fee regardless of rental duration.</p>
+                    
+                    <div class="formula-box">
+                        <strong>addon_type: "booking"</strong><br><br>
+                        Price = Fixed Amount<br>
+                        (Not multiplied by days)
+                    </div>
+                    
+                    <div class="pricing-example">
+                        <div class="row">
+                            <span class="label">Fast Track</span>
+                            <span class="value">$25.00</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Rental Days</span>
+                            <span class="value">3 days</span>
+                        </div>
+                        <div class="row total">
+                            <span class="label">Addon Total</span>
+                            <span class="value">$25.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Addons - Per Day -->
+                <div class="pricing-card">
+                    <h3>➕ Addons (Per Day) <span class="badge blue">Daily</span></h3>
+                    <p>Fee multiplied by number of rental days.</p>
+                    
+                    <div class="formula-box">
+                        <strong>addon_type: "days"</strong><br><br>
+                        Price = Daily Rate × Rental Days
+                    </div>
+                    
+                    <div class="pricing-example">
+                        <div class="row">
+                            <span class="label">GPS Navigation</span>
+                            <span class="value">$10.00/day</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Rental Days</span>
+                            <span class="value">3 days</span>
+                        </div>
+                        <div class="row total">
+                            <span class="label">Addon Total</span>
+                            <span class="value">$30.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Complete Booking Example -->
+        <section class="section">
+            <h2><span class="icon">🧾</span> Complete Booking Summary Example</h2>
+            <div class="pricing-example" style="max-width: 500px; margin: 0 auto; padding: 30px;">
+                <div class="row">
+                    <span class="label">Car Rental (3 days × $505)</span>
+                    <span class="value">$1,515.00</span>
+                </div>
+                <div class="row">
+                    <span class="label">Location Fee (Same Store)</span>
+                    <span class="value">$50.00</span>
+                </div>
+                <div class="row">
+                    <span class="label">Coverage Package</span>
+                    <span class="value">$100.00</span>
+                </div>
+                <div class="row">
+                    <span class="label">GPS Navigation (3 × $10)</span>
+                    <span class="value">$30.00</span>
+                </div>
+                <div class="row">
+                    <span class="label">Fast Track (fixed)</span>
+                    <span class="value">$25.00</span>
+                </div>
+                <div class="row">
+                    <span class="label">Child Seat (3 × $5.22)</span>
+                    <span class="value">$15.66</span>
+                </div>
+                <div class="row total" style="font-size: 1.3rem; color: var(--primary);">
+                    <span class="label">GRAND TOTAL</span>
+                    <span class="value">$1,735.66</span>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Key Features -->
+        <section class="section">
+            <h2><span class="icon">✨</span> Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon-box">🔍</div>
+                    <h4>Smart Search</h4>
+                    <p>Autocomplete location search with real-time suggestions from API.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">📅</div>
+                    <h4>Flexible Dates</h4>
+                    <p>Date picker with 30-minute time slot intervals for pickup/return.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">🚗</div>
+                    <h4>Car Filtering</h4>
+                    <p>Filter by brand, type, transmission, fuel type, and price range.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">💰</div>
+                    <h4>Dynamic Pricing</h4>
+                    <p>Real-time price calculation based on dates and selections.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">📦</div>
+                    <h4>Coverage Packages</h4>
+                    <p>Multiple package options with different coverage levels.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">➕</div>
+                    <h4>Extras & Addons</h4>
+                    <p>GPS, child seats, fast track, and more with flexible pricing.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">👤</div>
+                    <h4>User Accounts</h4>
+                    <p>Sign up, login, profile management, and booking history.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box">💳</div>
+                    <h4>Secure Payments</h4>
+                    <p>Integrated payment processing with success/cancel flows.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Pages Structure -->
+        <section class="section">
+            <h2><span class="icon">📂</span> Pages Structure</h2>
+            <div class="pages-tree">
+<span class="folder">/</span>                          <span class="arrow">→</span> <span class="file">Home Page (Hero Search)</span>
+<span class="folder">├── /cars</span>                  <span class="arrow">→</span> <span class="file">Car Listing Page</span>
+<span class="folder">│   └── /cars/[id]</span>         <span class="arrow">→</span> <span class="file">Car Details Page</span>
+<span class="folder">├── /booking</span>               <span class="arrow">→</span> <span class="file">Booking Flow Root</span>
+<span class="folder">│   ├── /booking/step1</span>     <span class="arrow">→</span> <span class="file">Step 1: Rental Details</span>
+<span class="folder">│   ├── /booking/step2</span>     <span class="arrow">→</span> <span class="file">Step 2: Customer Info</span>
+<span class="folder">│   ├── /booking/step3</span>     <span class="arrow">→</span> <span class="file">Step 3: Payment</span>
+<span class="folder">│   ├── /booking/step4</span>     <span class="arrow">→</span> <span class="file">Step 4: Confirmation</span>
+<span class="folder">│   └── /booking/success</span>   <span class="arrow">→</span> <span class="file">Booking Success</span>
+<span class="folder">├── /auth</span>                  <span class="arrow">→</span> <span class="file">Sign In / Sign Up</span>
+<span class="folder">├── /profile</span>               <span class="arrow">→</span> <span class="file">User Profile</span>
+<span class="folder">├── /my-bookings</span>           <span class="arrow">→</span> <span class="file">User Bookings Dashboard</span>
+<span class="folder">├── /about</span>                 <span class="arrow">→</span> <span class="file">About Page</span>
+<span class="folder">└── /contact</span>               <span class="arrow">→</span> <span class="file">Contact Page</span>
+            </div>
+        </section>
+        
+        <!-- Tech Stack -->
+        <section class="section">
+            <h2><span class="icon">🛠️</span> Technology Stack</h2>
+            <div class="tech-stack">
+                <div class="tech-badge">⚛️ Next.js 15</div>
+                <div class="tech-badge">📘 React</div>
+                <div class="tech-badge">🎨 Tailwind CSS</div>
+                <div class="tech-badge">🧩 Shadcn/ui</div>
+                <div class="tech-badge">🔄 TanStack Query</div>
+                <div class="tech-badge">📝 React Hook Form</div>
+                <div class="tech-badge">📡 Axios</div>
+                <div class="tech-badge">📅 date-fns</div>
+                <div class="tech-badge">🔔 React Hot Toast</div>
+                <div class="tech-badge">💾 Local Storage</div>
+            </div>
+        </section>
+        
+        <!-- Implemented Features -->
+        <section class="section">
+            <h2><span class="icon">✅</span> Implemented Features</h2>
+            <div class="checklist">
+                <div class="checklist-item"><span class="check">✓</span> Home page with search</div>
+                <div class="checklist-item"><span class="check">✓</span> Location autocomplete</div>
+                <div class="checklist-item"><span class="check">✓</span> Location pricing logic</div>
+                <div class="checklist-item"><span class="check">✓</span> Date/time selection</div>
+                <div class="checklist-item"><span class="check">✓</span> Car listing with filters</div>
+                <div class="checklist-item"><span class="check">✓</span> Car price calculation</div>
+                <div class="checklist-item"><span class="check">✓</span> Dynamic price display</div>
+                <div class="checklist-item"><span class="check">✓</span> 4-step booking flow</div>
+                <div class="checklist-item"><span class="check">✓</span> Package selection</div>
+                <div class="checklist-item"><span class="check">✓</span> Addons (fixed & daily)</div>
+                <div class="checklist-item"><span class="check">✓</span> Form validation</div>
+                <div class="checklist-item"><span class="check">✓</span> Payment integration</div>
+                <div class="checklist-item"><span class="check">✓</span> User authentication</div>
+                <div class="checklist-item"><span class="check">✓</span> Profile management</div>
+                <div class="checklist-item"><span class="check">✓</span> Bookings dashboard</div>
+                <div class="checklist-item"><span class="check">✓</span> Responsive design</div>
+            </div>
+        </section>
+        
+        <!-- Summary -->
+        <section class="section summary-box">
+            <h2><span class="icon" style="background: white; color: var(--primary);">📊</span> Project Summary</h2>
+            <div class="summary-stats">
+                <div class="stat">
+                    <div class="number">22</div>
+                    <div class="label">Pages</div>
+                </div>
+                <div class="stat">
+                    <div class="number">4</div>
+                    <div class="label">Booking Steps</div>
+                </div>
+                <div class="stat">
+                    <div class="number">3</div>
+                    <div class="label">Pricing Types</div>
+                </div>
+                <div class="stat">
+                    <div class="number">16+</div>
+                    <div class="label">Features</div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <p>ResolveCars Project Overview | Generated: December 15, 2025</p>
+    </footer>
+</body>
+</html>
+
