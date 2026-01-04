@@ -50,30 +50,30 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
           pickupDate && returnDate
             ? getCarPriceForDateRange(car, pickupDate, returnDate)
             : pickupDate
-              ? getCarPriceForDate(car, pickupDate)
-              : getCarPriceForCurrentDate(car); // Use current date if no search params
+            ? getCarPriceForDate(car, pickupDate)
+            : getCarPriceForCurrentDate(car); // Use current date if no search params
 
         // Get packages from API data or use default pricing plans
         const carPackages =
           car.packages && car.packages.length > 0
             ? car.packages
             : [
-              {
-                package_type: "premium",
-                package_type_display: "Premium",
-                features: [
-                  "Premium coverage included",
-                  "Free cancellation and modification",
-                  "No Excess",
-                  "Fuel tank full/full",
-                  "Refundable",
-                ],
-                price_per_day: car.price || 0,
-                original_price_per_day: car.originalPrice || car.price || 0,
-                discount_percentage: car.discount || 0,
-                has_discount: car.discount > 0,
-              },
-            ];
+                {
+                  package_type: "premium",
+                  package_type_display: "Premium",
+                  features: [
+                    "Premium coverage included",
+                    "Free cancellation and modification",
+                    "No Excess",
+                    "Fuel tank full/full",
+                    "Refundable",
+                  ],
+                  price_per_day: car.price || 0,
+                  original_price_per_day: car.originalPrice || car.price || 0,
+                  discount_percentage: car.discount || 0,
+                  has_discount: car.discount > 0,
+                },
+              ];
 
         // Transform packages to pricing plans format
         const plansWithPricing = carPackages
@@ -128,6 +128,12 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
           "Car";
         // Get car type
         const carType = car.type || car.model?.car_type?.name || "";
+        //Get description
+        const carDescription =
+          car.model?.car_type?.description ||
+          car.description?.split("-")?.[1]?.trim()?.split(" ")?.[0] ||
+          "";
+
         // Get car image
         const carImage =
           car.image || car.image_url || "/assets/cars/ridecard1.png";
@@ -247,10 +253,11 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
         return (
           <div
             key={car.id}
-            className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${unavailable
-              ? "opacity-50 grayscale cursor-not-allowed"
-              : "hover:shadow-lg"
-              }`}
+            className={`bg-white rounded-lg shadow-md overflow-hidden transition-shadow ${
+              unavailable
+                ? "opacity-50 grayscale cursor-not-allowed"
+                : "hover:shadow-lg"
+            }`}
           >
             <div className="flex flex-col lg:flex-row">
               {/* Left Section - Car Details */}
@@ -266,11 +273,14 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
 
                 {/* Car Model Name */}
                 <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  {carName}
+                  {carName} <span className="font-normal">or similar</span>
                 </h3>
 
                 {/* Car Type Badge - Yellow oval */}
                 <div className="mb-4">
+                  <span className="font-normal text-black">
+                    {carDescription}
+                  </span>{" "}
                   <span className="bg-yellow-400 text-gray-900 px-3 py-1 rounded-full text-xs font-medium">
                     {carType}
                   </span>
@@ -285,61 +295,72 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                     className="object-cover"
                   />
                   {/* Year Badge - Only show if year exists */}
-                  {carYear && (
+                  {/* {carYear && (
                     <div className="absolute bottom-4 right-4">
                       <span className="text-gray-900 font-semibold text-lg">
                         {carYear}
                       </span>
                     </div>
-                  )}
+                  )} */}
                 </div>
 
                 {/* Base Price and Available Dates */}
                 {(activeCarPrice || availableStartDate || availableEndDate) && (
                   <div className="mb-4 space-y-3">
                     {/* Base Price Section */}
-                    {activeCarPrice && activeCarPrice.price_per_day > 0 && (() => {
-                      // Calculate rental days from start_date and end_date
-                      let rentalDays = 0;
-                      let totalPrice = 0;
+                    {activeCarPrice &&
+                      activeCarPrice.price_per_day > 0 &&
+                      (() => {
+                        // Calculate rental days from start_date and end_date
+                        let rentalDays = 0;
+                        let totalPrice = 0;
 
-                      if (activeCarPrice.start_date && activeCarPrice.end_date) {
-                        const startDate = new Date(activeCarPrice.start_date);
-                        const endDate = new Date(activeCarPrice.end_date);
-                        const diffTime = Math.abs(endDate - startDate);
-                        rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        totalPrice = rentalDays * activeCarPrice.price_per_day;
-                      }
+                        if (
+                          activeCarPrice.start_date &&
+                          activeCarPrice.end_date
+                        ) {
+                          const startDate = new Date(activeCarPrice.start_date);
+                          const endDate = new Date(activeCarPrice.end_date);
+                          const diffTime = Math.abs(endDate - startDate);
+                          rentalDays = Math.ceil(
+                            diffTime / (1000 * 60 * 60 * 24)
+                          );
+                          totalPrice =
+                            rentalDays * activeCarPrice.price_per_day;
+                        }
 
-                      return (
-                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 p-4 shadow-sm">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                  Base Price
-                                </span>
+                        return (
+                          <div>
+                            {/* className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 p-4 shadow-sm" */}
+                            {/* <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                                  <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                    Base Price
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 font-normal">
+                                  Starting from
+                                </p>
                               </div>
-                              <p className="text-xs text-gray-500 font-normal">
-                                Starting from
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xl font-bold text-gray-900">
-                                {activeCarPrice.display_price ||
-                                  `$${activeCarPrice.price_per_day?.toFixed(2) ||
-                                  "0.00"
-                                  }`}
-                              </span>
-                              <p className="text-xs text-gray-500 font-normal mt-0.5">
-                                {formatDateDisplay(activeCarPrice.start_date)}
-                              </p>
-                            </div>
-                          </div>
+                              <div className="text-right">
+                                <span className="text-xl font-bold text-gray-900">
+                                  {activeCarPrice.display_price ||
+                                    `$${
+                                      activeCarPrice.price_per_day?.toFixed(
+                                        2
+                                      ) || "0.00"
+                                    }`}
+                                </span>
+                                <p className="text-xs text-gray-500 font-normal mt-0.5">
+                                  {formatDateDisplay(activeCarPrice.start_date)}
+                                </p>
+                              </div>
+                            </div> */}
 
-                          {/* Show calculated total based on start_date and end_date */}
-                          {/* {rentalDays > 0 && (
+                            {/* Show calculated total based on start_date and end_date */}
+                            {/* {rentalDays > 0 && (
                             <div className="pt-2 border-t border-gray-200 mt-2">
                               <div className="flex items-center justify-between text-xs mb-1">
                                 <span className="text-gray-600">
@@ -352,8 +373,8 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                             </div>
                           )} */}
 
-                          {/* Show price validity dates if available from car_prices */}
-                          {/* {(activeCarPrice.date_range || (activeCarPrice.start_date && activeCarPrice.end_date)) && (
+                            {/* Show price validity dates if available from car_prices */}
+                            {/* {(activeCarPrice.date_range || (activeCarPrice.start_date && activeCarPrice.end_date)) && (
                             <div className="pt-2 border-t border-gray-200 mt-2">
                               <div className="flex items-center gap-2">
                                 <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
@@ -378,42 +399,43 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               </div>
                             </div>
                           )} */}
-                          {/* Show pricing info from API if available */}
-                          {car.pricing?.rental_calculation && (
-                            <div className="pt-2 border-t border-gray-200 mt-2">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-600">
-                                  Base Rental Cost:
-                                </span>
-                                <span className="text-gray-900 font-semibold">
-                                  $
-                                  {parseFloat(
-                                    car.pricing.rental_calculation
-                                      .base_rental_cost || 0
-                                  ).toFixed(2)}
-                                </span>
-                              </div>
-                              {car.pricing.rental_calculation.rental_days && (
-                                <div className="flex items-center justify-between text-xs mt-1">
+                            {/* Show pricing info from API if available */}
+                            {car.pricing?.rental_calculation && (
+                              <div className="pt-2 border-t border-gray-200 mt-2">
+                                <div className="flex items-center justify-between text-xs">
                                   <span className="text-gray-600">
-                                    Rental Days:
+                                    Base Rental Cost:
                                   </span>
                                   <span className="text-gray-900 font-semibold">
+                                    $
                                     {parseFloat(
-                                      car.pricing.rental_calculation.rental_days
-                                    ).toFixed(2)}{" "}
-                                    days
+                                      car.pricing.rental_calculation
+                                        .base_rental_cost || 0
+                                    ).toFixed(2)}
                                   </span>
                                 </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
+                                {car.pricing.rental_calculation.rental_days && (
+                                  <div className="flex items-center justify-between text-xs mt-1">
+                                    <span className="text-gray-600">
+                                      Rental Days:
+                                    </span>
+                                    <span className="text-gray-900 font-semibold">
+                                      {parseFloat(
+                                        car.pricing.rental_calculation
+                                          .rental_days
+                                      ).toFixed(2)}{" "}
+                                      days
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                     {/* Available Dates Section */}
-                    {(availableStartDate || availableEndDate) && (
+                    {/* {(availableStartDate || availableEndDate) && (
                       <div className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -439,12 +461,12 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                           </div>
                         </div>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 )}
 
                 {/* Specifications */}
-                <div className="flex items-center gap-6 mb-4">
+                <div className="flex items-center justify-center gap-6 mb-4">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-gray-600" />
                     <span className="text-sm font-medium text-gray-700">
@@ -503,6 +525,9 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                     </span>
                   </div>
                 </div>
+                <p className="text-center font-medium text-black">
+                  Unlimited mileage
+                </p>
 
                 {/* Rating */}
                 {/* <div className="flex items-center gap-2">
@@ -577,23 +602,32 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                           )}
                           <div className="space-y-1">
                             {/* Show original price if it exists and is higher than current price */}
-                            {plan.originalDisplayPrice && (
+                            {/* {plan.originalDisplayPrice && (
                               <p className="text-xs text-gray-500 line-through">
-                                {plan.originalDisplayPrice}/day
+                                {plan.originalDisplayPrice}
+                              </p>
+                            )} */}
+                            {Number(plan.originalDisplayPrice) > 0 ? (
+                              <p className="text-md text-gray-500 line-through font-medium">
+                                {plan.originalDisplayPrice}
+                              </p>
+                            ) : (
+                              <p className="text-md text-gray-500 font-medium">
+                                {plan.displayPrice}
                               </p>
                             )}
-                            {!plan.originalDisplayPrice &&
+
+                            {/* {!plan.originalDisplayPrice &&
                               plan.originalPrice &&
                               plan.originalPrice > plan.pricePerDay && (
                                 <p className="text-xs text-gray-500 line-through">
-                                  ${plan.originalPrice.toFixed(2)}/day
+                                  ${plan.originalPrice.toFixed(2)}
                                 </p>
                               )}
                             <p className="text-lg font-bold text-gray-900">
                               {plan.displayPrice ||
                                 `$${parseFloat(plan.currentPrice).toFixed(2)}`}
-                              /day
-                            </p>
+                            </p> */}
                           </div>
                         </div>
 
@@ -648,12 +682,17 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               }
 
                               bookingStorage.setCar(car);
-                              console.log("CarFlexView: existingStep1 before update:", {
-                                pickupLocationPrice: existingStep1.pickupLocationPrice,
-                                returnLocationPrice: existingStep1.returnLocationPrice,
-                                locationFee: existingStep1.locationFee,
-                                sameStore: existingStep1.sameStore,
-                              });
+                              console.log(
+                                "CarFlexView: existingStep1 before update:",
+                                {
+                                  pickupLocationPrice:
+                                    existingStep1.pickupLocationPrice,
+                                  returnLocationPrice:
+                                    existingStep1.returnLocationPrice,
+                                  locationFee: existingStep1.locationFee,
+                                  sameStore: existingStep1.sameStore,
+                                }
+                              );
                               bookingStorage.updateStep("step1", {
                                 ...existingStep1,
                                 protectionPlan: plan.id,
@@ -685,10 +724,11 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               router.push("/booking/step1");
                             }
                           }}
-                          className={`m-4 font-medium py-3 rounded ${unavailable
-                            ? "bg-gray-400 cursor-not-allowed text-white"
-                            : "bg-red-400 hover:bg-red-500 text-white"
-                            }`}
+                          className={`m-4 font-medium py-3 rounded ${
+                            unavailable
+                              ? "bg-gray-400 cursor-not-allowed text-white"
+                              : "bg-red-400 hover:bg-red-500 text-white"
+                          }`}
                         >
                           {unavailable ? "UNAVAILABLE" : "Continue"}
                         </Button>
