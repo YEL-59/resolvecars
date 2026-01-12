@@ -91,11 +91,23 @@ export const useCars = (params = {}) => {
       });
       
       const res = await axiosPublic.get(`/cars?${queryParams.toString()}`);
-      const responseData = res.data?.data || res.data;
+      
+      console.log("[useCars] Raw API Response:", res.data);
+      
+      // Handle response structure: { success: true, data: { data: [...], current_page: 1, ... } }
+      const apiResponse = res.data;
+      const responseData = apiResponse?.data || apiResponse;
+      
+      console.log("[useCars] responseData:", responseData);
+      console.log("[useCars] responseData.data:", responseData?.data);
+      
+      const carsArray = responseData?.data || [];
+      
+      console.log(`[useCars] Total cars from API: ${carsArray.length}`);
+      console.log(`[useCars] Cars array:`, carsArray);
       
       // Filter cars: Only show cars with status "available"
       // Hide "rented" (confirmed/active bookings) and other statuses like "booked"
-      const carsArray = responseData.data || [];
       const availableCars = carsArray.filter(car => {
         const status = car.status?.toLowerCase();
         const isAvailable = status === "available";
@@ -105,18 +117,26 @@ export const useCars = (params = {}) => {
         return isAvailable;
       });
       
-      console.log(`[useCars] Total cars from API: ${carsArray.length}, Available cars: ${availableCars.length}`);
+      console.log(`[useCars] Available cars after filtering: ${availableCars.length}`);
+      
+      if (carsArray.length > 0 && availableCars.length === 0) {
+        console.warn(`[useCars] WARNING: ${carsArray.length} car(s) returned but all filtered out due to status. Statuses:`, 
+          carsArray.map(c => ({ id: c.id, status: c.status }))
+        );
+      }
       
       // Transform the cars data (only available cars)
       const transformedCars = availableCars.map(transformCarData);
       
       return {
         cars: transformedCars,
+        totalCarsFromAPI: carsArray.length, // Store total for debugging
+        availableCarsCount: availableCars.length, // Store available count
         pagination: {
           current_page: responseData.current_page || 1,
           last_page: responseData.last_page || 1,
           per_page: responseData.per_page || per_page,
-          total: transformedCars.length, // Use filtered count instead of API total
+          total: responseData.total || transformedCars.length, // Use API total for pagination, filtered count for display
           from: transformedCars.length > 0 ? (responseData.from || 1) : 0,
           to: transformedCars.length,
           links: responseData.links || [],
@@ -201,10 +221,21 @@ export const useSearchCars = (params = {}) => {
       
       console.log("Raw API Response:", res.data);
       
-      // Handle response structure: { success: true, data: [...], meta: {...} }
-      const responseData = res.data;
-      const carsArray = responseData?.data || [];
-      const meta = responseData?.meta || {};
+      // Handle response structure: 
+      // { success: true, data: { data: [...], current_page: 1, ... } }
+      // OR: { success: true, data: [...], meta: {...} }
+      const apiResponse = res.data;
+      let responseData = apiResponse?.data || apiResponse;
+      
+      // If responseData has a nested data array (pagination structure)
+      const carsArray = responseData?.data 
+        ? responseData.data  // Paginated structure: { data: [...], current_page: 1, ... }
+        : (Array.isArray(responseData) ? responseData : []); // Direct array structure
+      
+      const meta = apiResponse?.meta || {};
+      
+      // Extract pagination info if it exists (from paginated structure)
+      const paginationData = responseData?.data ? responseData : {};
 
       console.log("Cars array from API (before filtering):", carsArray);
       console.log("Cars array length (before filtering):", carsArray.length);
@@ -239,12 +270,15 @@ export const useSearchCars = (params = {}) => {
           filters_applied: meta.filters_applied || {},
         },
         pagination: {
-          current_page: 1,
-          last_page: 1,
-          per_page: transformedCars.length, // Use filtered count
+          current_page: paginationData.current_page || 1,
+          last_page: paginationData.last_page || 1,
+          per_page: paginationData.per_page || transformedCars.length,
           total: transformedCars.length, // Use filtered count
-          from: transformedCars.length > 0 ? 1 : 0,
+          from: transformedCars.length > 0 ? (paginationData.from || 1) : 0,
           to: transformedCars.length,
+          links: paginationData.links || [],
+          next_page_url: paginationData.next_page_url || null,
+          prev_page_url: paginationData.prev_page_url || null,
         },
       };
     },

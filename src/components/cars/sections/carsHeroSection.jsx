@@ -270,14 +270,14 @@ const CarsHeroSection = () => {
     // Only load from storage if URL has no search params
     // If URL has params, they will be loaded by CarsCardSection component
     if (!hasUrlSearchParams) {
-      const step1 = bookingStorage.getStep("step1") || {};
-      try {
-        if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
-        if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
-        if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
-        if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
-        if (step1.dropoffLocation) {
-          setReturnLocation(step1.dropoffLocation);
+    const step1 = bookingStorage.getStep("step1") || {};
+    try {
+      if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
+      if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
+      if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
+      if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
+      if (step1.dropoffLocation) {
+        setReturnLocation(step1.dropoffLocation);
         }
         if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
         // Load location prices
@@ -287,9 +287,9 @@ const CarsHeroSection = () => {
         if (typeof step1.sameStore === 'boolean') {
           setSameStore(step1.sameStore);
         } else if (step1.pickupLocation && step1.dropoffLocation) {
-          setSameStore(step1.pickupLocation === step1.dropoffLocation);
-        }
-      } catch { }
+        setSameStore(step1.pickupLocation === step1.dropoffLocation);
+      }
+    } catch { }
     }
   }, []);
 
@@ -429,10 +429,10 @@ const CarsHeroSection = () => {
       }
     };
 
-    // Calculate location fee: same location = single price, different = sum of both
+    // Calculate location fee: same location = 0 (no charge), different = sum of both prices
     const finalPickupPrice = pickupLocationPrice || 0;
-    const finalReturnPrice = sameStore ? 0 : (returnLocationPrice || 0);
-    const locationFee = finalPickupPrice + finalReturnPrice;
+    const finalReturnPrice = returnLocationPrice || 0;
+    const locationFee = sameStore ? 0 : (finalPickupPrice + finalReturnPrice);
 
     console.log("CarsHeroSection: Storing location fee data:", {
       pickupLocationPrice: finalPickupPrice,
@@ -449,7 +449,7 @@ const CarsHeroSection = () => {
       pickupLocationPrice: finalPickupPrice,
       dropoffLocation: sameStore ? pickupLocation : returnLocation,
       dropoffLocationId: finalReturnId,
-      returnLocationPrice: sameStore ? 0 : finalReturnPrice,
+      returnLocationPrice: finalReturnPrice,
       locationFee: locationFee,
       sameStore: sameStore,
       pickup_time: formattedPickupTime,
@@ -469,8 +469,8 @@ const CarsHeroSection = () => {
     });
 
     // Include times (always include them, even if default 12:00, for consistency)
-    searchParams.append("pickup_time", formattedPickupTime);
-    searchParams.append("return_time", formattedReturnTime);
+      searchParams.append("pickup_time", formattedPickupTime);
+      searchParams.append("return_time", formattedReturnTime);
 
     console.log("Navigating to /cars with search params:", searchParams.toString());
     router.push(`/cars?${searchParams.toString()}`);
@@ -823,14 +823,14 @@ const CarsHeroSection = () => {
                 </Button>
               )}
 
-              {/* Search Button */}
-              <Button
-                onClick={handleSearch}
-                className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
-              >
-                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-                SEARCH
-              </Button>
+            {/* Search Button */}
+            <Button
+              onClick={handleSearch}
+              className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
+            >
+              <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+              SEARCH
+            </Button>
             </div>
           </div>
         </div>

@@ -126,9 +126,9 @@ const FeaturedSection = () => {
                         {vehicle.type}
                       </span>
                       <div className="relative flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-500">
+                        {/* <span className="text-sm font-medium text-gray-500">
                           {vehicle.year}
-                        </span>
+                        </span> */}
                         {/* <button
                           aria-label={
                             isSaved(vehicle.id) ? "Unsave vehicle" : "Save vehicle"

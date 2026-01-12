@@ -30,7 +30,7 @@ import { bookingStorage } from "@/lib/bookingStorage";
 import { coveragePlans, extrasData } from "@/lib/coverageData";
 import { useCreateBooking } from "@/hooks/booking.hook";
 import { useAddons, getAddonIdByName } from "@/hooks/addons.hook";
-import { getAddonId } from "@/lib/addonMapping";
+import { getAddonId, getAddonByExtraId } from "@/lib/addonMapping";
 import Image from "next/image";
 import {
   Dialog,
@@ -612,7 +612,7 @@ export default function Step1Rental({ onNext }) {
   }, [watchedExtras, childSeatQuantities, donationAmount, customDonation, rentalDays, priceUpdateKey, addonsData]);
 
   // Calculate location fee from bookingStorage
-  // If same location: single price, if different: sum of both
+  // If same location: 0 (no charge), if different: sum of both prices
   const locationFee = useMemo(() => {
     const step1Data = bookingStorage.getStep("step1") || {};
 
@@ -624,7 +624,7 @@ export default function Step1Rental({ onNext }) {
     });
 
     // If locationFee was pre-calculated in HeroSections/carsHeroSection, use it
-    if (typeof step1Data.locationFee === 'number' && step1Data.locationFee > 0) {
+    if (typeof step1Data.locationFee === 'number') {
       console.log("Step1Rental: Using pre-calculated locationFee:", step1Data.locationFee);
       return step1Data.locationFee;
     }
@@ -634,10 +634,17 @@ export default function Step1Rental({ onNext }) {
     const returnPrice = parseFloat(step1Data.returnLocationPrice) || 0;
     const sameStore = step1Data.sameStore !== false; // Default to true
 
-    const calculatedFee = sameStore ? pickupPrice : (pickupPrice + returnPrice);
+    // If same location: 0, if different: sum of both prices
+    const calculatedFee = sameStore ? 0 : (pickupPrice + returnPrice);
     console.log("Step1Rental: Calculated locationFee:", calculatedFee);
     return calculatedFee;
   }, [priceUpdateKey, packageUpdateKey]); // Added packageUpdateKey to trigger recalculation
+
+  // Get out-of-office fee (40 if pickup or return time is outside office hours 8:00-21:00)
+  const outOfOfficeFee = useMemo(() => {
+    const step1Data = bookingStorage.getStep("step1") || {};
+    return parseFloat(step1Data.outOfOfficeFee) || 0;
+  }, [priceUpdateKey, packageUpdateKey]);
 
   // Calculate grand total (car base price + package price + addons + location fee)
   // Only use total_amount from booking API if booking has already been created
@@ -658,7 +665,8 @@ export default function Step1Rental({ onNext }) {
     // package_cost = package_price_per_day × days
     // addons_cost = sum of (addon_price_per_day × quantity × days)
     // location_fee = pickup location price + return location price (if different)
-    // subtotal = base_rental_cost + package_cost + addons_cost + location_fee
+    // out_of_office_fee = 40 if pickup or return time is outside office hours (8:00-21:00)
+    // subtotal = base_rental_cost + package_cost + addons_cost + location_fee + out_of_office_fee
     // tax_amount = subtotal × tax_percentage / 100
     // total_amount = subtotal + tax_amount
 
@@ -666,9 +674,10 @@ export default function Step1Rental({ onNext }) {
     const packageCost = baseRateTotal || 0; // package_price_per_day × days
     const addonsCost = addonsTotal || 0; // sum of addons × days
     const locationCost = locationFee || 0; // Location fee
+    const outOfOfficeCost = outOfOfficeFee || 0; // Out-of-office hours fee
 
     // Calculate subtotal (before tax)
-    const subtotal = baseRentalCost + packageCost + addonsCost + locationCost;
+    const subtotal = baseRentalCost + packageCost + addonsCost + locationCost + outOfOfficeCost;
 
     // Tax calculation commented out
     // const taxPercentage = 10; // Default tax percentage (can be made configurable)
@@ -696,7 +705,7 @@ export default function Step1Rental({ onNext }) {
     }
 
     return total;
-  }, [carBasePriceTotal, baseRateTotal, addonsTotal, locationFee]);
+  }, [carBasePriceTotal, baseRateTotal, addonsTotal, locationFee, outOfOfficeFee]);
 
   // Prepare booking data for API
   const prepareBookingData = () => {
@@ -917,20 +926,23 @@ export default function Step1Rental({ onNext }) {
         return;
       }
 
-      // Handle hardcoded extras (childSeat, etc.)
+      // Handle hardcoded extras (childSeat, etc.) - use dynamic API matching
       let addonId = null;
       const extra = extrasData.find(e => e.id === extraId);
 
       if (addonsData && Array.isArray(addonsData) && addonsData.length > 0) {
-        // Try to find addon by matching name with extra name
-        if (extra) {
+        // Try to find addon by matching name with extra name (dynamic matching)
+        if (extra && extra.name) {
           addonId = getAddonIdByName(addonsData, extra.name);
 
-          if (!addonId && extra.name) {
+          // If not found by exact name, try fuzzy matching
+          if (!addonId) {
             const matchingAddon = addonsData.find(a => {
               const addonName = (a.name || "").toLowerCase();
+              const addonSlug = (a.slug || "").toLowerCase();
               const extraName = extra.name.toLowerCase();
               return addonName === extraName ||
+                addonSlug === extraName ||
                 addonName.includes(extraName) ||
                 extraName.includes(addonName);
             });
@@ -938,18 +950,21 @@ export default function Step1Rental({ onNext }) {
           }
         }
 
+        // Use dynamic getAddonId (no static mapping)
         if (!addonId) {
-          addonId = getAddonId(extraId);
+          addonId = getAddonId(extraId, addonsData, extrasData);
         }
-      } else {
-        addonId = getAddonId(extraId);
       }
 
       if (addonId) {
         console.log(`Mapped extra "${extraId}" (${extra?.name || "unknown"}) to addon ID: ${addonId}`);
 
         // Special handling for child seats (quantity based on child seat types)
-        if (extraId === "childSeat") {
+        // Check if this is a child seat addon (by name or by extraId)
+        const isChildSeat = extraId === "childSeat" ||
+          (extra && extra.name && extra.name.toLowerCase().includes("child seat"));
+
+        if (isChildSeat) {
           const quantities = step1Data.childSeatQuantities || childSeatQuantities;
           const totalChildSeats = (quantities.babySeat || 0) +
             (quantities.childSeat || 0) +
@@ -957,18 +972,18 @@ export default function Step1Rental({ onNext }) {
 
           if (totalChildSeats > 0) {
             addons.push({
-              id: addonId,
+              id: addonId, // Use dynamic API addon ID (no static ID)
               quantity: totalChildSeats,
             });
           }
         } else {
           addons.push({
-            id: addonId,
+            id: addonId, // Use dynamic API addon ID (no static ID)
             quantity: 1,
           });
         }
       } else {
-        console.warn(`Could not find addon ID for extra: ${extraId} (${extra?.name || "unknown"})`);
+        console.warn(`Could not find addon ID for extra: ${extraId} (${extra?.name || "unknown"}) - skipping from payload`);
       }
     });
 
@@ -1457,6 +1472,14 @@ export default function Step1Rental({ onNext }) {
                       </span>
                     </div>
                   )}
+                  {outOfOfficeFee > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Out-of-Office Hours Fee:</span>
+                      <span className="text-gray-900 font-medium">
+                        {outOfOfficeFee.toFixed(2)} €
+                      </span>
+                    </div>
+                  )}
                   {addonsTotal > 0 && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Addons:</span>
@@ -1490,6 +1513,7 @@ export default function Step1Rental({ onNext }) {
                   {carBasePrice && carBasePrice.rental_days > 0 && ` (${carBasePrice.rental_days} days × ${carBasePrice.price_per_day.toFixed(2)} €)`}
                   {baseRateTotal > 0 && ` + ${baseRateTotal.toFixed(2)} € package`}
                   {locationFee > 0 && ` + ${locationFee.toFixed(2)} € location`}
+                  {outOfOfficeFee > 0 && ` + ${outOfOfficeFee.toFixed(2)} € out-of-office`}
                   {addonsTotal > 0 && ` + ${addonsTotal.toFixed(2)} € addons`}
                   {" = "}{grandTotal.toFixed(2)} € total
                 </p>
@@ -2157,10 +2181,21 @@ export default function Step1Rental({ onNext }) {
                       childSeatQuantities.boosterSeat;
 
                     if (totalSeats > 0) {
-                      // Add child seat to extras
+                      // Find child seat addon from API dynamically
+                      const childSeatAddon = getAddonByExtraId("childSeat", addonsData, extrasData);
+                      const childSeatAddonId = childSeatAddon?.id;
+
+                      if (!childSeatAddonId) {
+                        console.warn("Child seat addon not found in API. Using fallback 'childSeat' ID.");
+                      }
+
+                      // Use API addon ID if found, otherwise use 'childSeat' as fallback
+                      const extraIdToUse = childSeatAddonId ? childSeatAddonId.toString() : "childSeat";
+
+                      // Add child seat to extras (using API addon ID if available)
                       const current = form.getValues("extras") || [];
-                      if (!current.includes("childSeat")) {
-                        const updated = [...current, "childSeat"];
+                      if (!current.includes(extraIdToUse) && !current.includes("childSeat")) {
+                        const updated = [...current, extraIdToUse];
                         form.setValue("extras", updated, { shouldDirty: true });
                         bookingStorage.updateStep("step1", {
                           ...bookingStorage.getStep("step1"),

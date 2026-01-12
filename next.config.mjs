@@ -6,12 +6,21 @@ const nextConfig = {
       "resolvecars.softvencefsd.xyz",
       "resolvecars.svaalpha.com",
       "resolvecars.reigeeky.com",
+      "resolvecars.thesyndicates.team",
     ],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "resolvecars.softvencefsd.xyz",
+        pathname: "/storage/**",
+      },
+      {
+        protocol: "https",
         hostname: "resolvecars.svaalpha.com",
+        pathname: "/storage/**",
+      },
+      {
+        protocol: "https",
         hostname: "resolvecars.reigeeky.com",
         pathname: "/storage/**",
       },

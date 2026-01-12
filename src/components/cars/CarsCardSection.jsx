@@ -372,7 +372,19 @@ export default function CarsCardSection() {
         {/* No Cars Found */}
         {!isLoading && !isError && displayedCars.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-muted-foreground">No cars found matching your criteria.</p>
+            <div className="max-w-md mx-auto">
+              <p className="text-gray-600 text-lg mb-2">No cars available at the moment.</p>
+              <p className="text-gray-500 text-sm">
+                {hasSearchParams
+                  ? "Please try different dates or locations."
+                  : "All cars may be currently rented. Please check back later."}
+              </p>
+              {data && data.totalCarsFromAPI > 0 && data.availableCarsCount === 0 && (
+                <p className="text-gray-400 text-xs mt-4">
+                  Note: {data.totalCarsFromAPI} car(s) were found in the API but filtered out (status: rented/unavailable).
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -37,12 +37,10 @@ const TimeSelector = ({ value, onChange, label }) => {
   const [open, setOpen] = useState(false);
   const timeOptions = [];
 
-  // Generate time options from 00:00 to 23:30 in 30-minute intervals
+  // Generate time options from 00:00 to 23:00 in 1-hour intervals
   for (let hour = 0; hour < 24; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-      timeOptions.push(timeString);
-    }
+    const timeString = `${String(hour).padStart(2, '0')}:00`;
+    timeOptions.push(timeString);
   }
 
   return (
@@ -92,12 +90,14 @@ const SearchableLocationInput = ({
   onChange,
   onLocationSelect,
   placeholder = "City, airport...",
-  label
+  label,
+  inputRef: externalInputRef
 }) => {
   const [searchQuery, setSearchQuery] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
-  const inputRef = useRef(null);
+  const internalInputRef = useRef(null);
+  const inputRef = externalInputRef || internalInputRef;
   const dropdownRef = useRef(null);
 
   // Fetch locations from API
@@ -250,7 +250,7 @@ const HeroSections = () => {
   const [pickupDate, setPickupDate] = useState(null);
   const [returnDate, setReturnDate] = useState(null);
   const [pickupTime, setPickupTime] = useState("13:00");
-  const [returnTime, setReturnTime] = useState("13:30");
+  const [returnTime, setReturnTime] = useState("14:00");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [activeTrigger, setActiveTrigger] = useState(null); // Track which button was clicked
   const [isMobile, setIsMobile] = useState(false);
@@ -263,36 +263,55 @@ const HeroSections = () => {
   const [returnLocationPrice, setReturnLocationPrice] = useState(0);
   const [sameStore, setSameStore] = useState(true);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const returnLocationInputRef = useRef(null);
 
 
-  // Calculate period in days
-  // Base calculation: difference in days between pickup and return dates
-  // If return time is 30+ minutes later than pickup time, add an extra day
+  // Office hours: 8:00 to 21:00 (8 AM to 9 PM)
+  const OFFICE_START_HOUR = 8;
+  const OFFICE_END_HOUR = 21;
+  const OUT_OF_OFFICE_FEE = 40;
+
+  // Check if time is outside office hours
+  const isOutOfOfficeHours = (timeString) => {
+    if (!timeString) return false;
+    const [hour] = timeString.split(":").map(Number);
+    return hour < OFFICE_START_HOUR || hour >= OFFICE_END_HOUR;
+  };
+
+  // Calculate period in days with office hours logic
+  // If pickup or return time is outside office hours (before 8:00 or after 21:00), add an extra day
   const periodDays = pickupDate && returnDate && pickupTime && returnTime
     ? (() => {
-      // Calculate base days difference (without +1)
-      const baseDays = differenceInDays(returnDate, pickupDate);
+      // Calculate base days difference
+      let baseDays = differenceInDays(returnDate, pickupDate);
 
-      // Parse times to compare
-      const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
-      const [returnHour, returnMin] = returnTime.split(":").map(Number);
+      // Check if pickup time is outside office hours
+      const pickupOutOfOffice = isOutOfOfficeHours(pickupTime);
+      // Check if return time is outside office hours
+      const returnOutOfOffice = isOutOfOfficeHours(returnTime);
 
-      // Convert to total minutes for comparison
-      const pickupTotalMinutes = pickupHour * 60 + pickupMin;
-      const returnTotalMinutes = returnHour * 60 + returnMin;
+      // If pickup time is outside office hours, add 1 day
+      if (pickupOutOfOffice) {
+        baseDays = baseDays + 1;
+      }
 
-      // If return time is 30+ minutes later than pickup time, add 1 day
-      let days = baseDays;
-      if (returnTotalMinutes >= pickupTotalMinutes + 30) {
-        days = baseDays + 1;
+      // If return time is outside office hours, add 1 day
+      if (returnOutOfOffice) {
+        baseDays = baseDays + 1;
       }
 
       // Ensure minimum of 1 day
-      return Math.max(1, days);
+      return Math.max(1, baseDays);
     })()
     : pickupDate && returnDate
       ? Math.max(1, differenceInDays(returnDate, pickupDate))
       : 0;
+
+  // Calculate out-of-office fee (40 if any time is outside office hours)
+  const outOfOfficeFee = (pickupTime && isOutOfOfficeHours(pickupTime)) ||
+    (returnTime && isOutOfOfficeHours(returnTime))
+    ? OUT_OF_OFFICE_FEE
+    : 0;
 
   // Format date as DD/MM/YYYY
   const formatDate = (date) => {
@@ -311,7 +330,7 @@ const HeroSections = () => {
     setPickupDate(null);
     setReturnDate(null);
     setPickupTime("13:00");
-    setReturnTime("13:30");
+    setReturnTime("14:00");
     setPickupLocation("");
     setReturnLocation("");
     setPickupLocationId(null);
@@ -402,16 +421,22 @@ const HeroSections = () => {
       }
     };
 
-    // Calculate location fee: same location = single price, different = sum of both
+    // Calculate location fee: same location = 0 (no charge), different = sum of both prices
     const finalPickupPrice = pickupLocationPrice || 0;
-    const finalReturnPrice = sameStore ? 0 : (returnLocationPrice || 0);
-    const locationFee = finalPickupPrice + finalReturnPrice;
+    const finalReturnPrice = returnLocationPrice || 0;
+    const locationFee = sameStore ? 0 : (finalPickupPrice + finalReturnPrice);
 
-    console.log("HeroSections: Storing location fee data:", {
+    // Calculate out-of-office fee (40 if any time is outside office hours 8:00-21:00)
+    const finalOutOfOfficeFee = outOfOfficeFee || 0;
+
+    console.log("HeroSections: Storing location fee and out-of-office fee data:", {
       pickupLocationPrice: finalPickupPrice,
       returnLocationPrice: finalReturnPrice,
       locationFee: locationFee,
       sameStore: sameStore,
+      outOfOfficeFee: finalOutOfOfficeFee,
+      pickupTime: formattedPickupTime,
+      returnTime: formattedReturnTime,
     });
 
     bookingStorage.updateStep("step1", {
@@ -422,8 +447,9 @@ const HeroSections = () => {
       pickupLocationPrice: finalPickupPrice,
       dropoffLocation: sameStore ? pickupLocation : returnLocation,
       dropoffLocationId: finalReturnId,
-      returnLocationPrice: sameStore ? 0 : finalReturnPrice,
+      returnLocationPrice: finalReturnPrice,
       locationFee: locationFee,
+      outOfOfficeFee: finalOutOfOfficeFee,
       sameStore: sameStore,
       pickup_time: formattedPickupTime,
       return_time: formattedReturnTime,
@@ -593,6 +619,21 @@ const HeroSections = () => {
                       if (location) {
                         setPickupLocationId(location.id);
                         setPickupLocationPrice(location.price || 0);
+
+                        // Auto-focus return location if sameStore is unchecked
+                        if (!sameStore) {
+                          // Small delay to ensure the return location field is rendered and state is updated
+                          setTimeout(() => {
+                            if (returnLocationInputRef.current) {
+                              returnLocationInputRef.current.focus();
+                              // Scroll into view if needed
+                              returnLocationInputRef.current.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                              });
+                            }
+                          }, 150);
+                        }
                       } else {
                         setPickupLocationId(null);
                         setPickupLocationPrice(0);
@@ -621,6 +662,7 @@ const HeroSections = () => {
                         }
                       }}
                       placeholder="City, airport..."
+                      inputRef={returnLocationInputRef}
                     />
                   </div>
                 )}
