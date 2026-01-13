@@ -37,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { useSignIn, useSignUp } from "@/hooks/auth.hook";
+import toast from "react-hot-toast";
 
 // Component that uses useSearchParams
 const SignInPageContent = () => {
@@ -44,6 +45,7 @@ const SignInPageContent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Initialize hooks for login and registration
   const {
@@ -63,8 +65,25 @@ const SignInPageContent = () => {
     const tab = searchParams.get("tab");
     if (tab === "login" || tab === "register") {
       setActiveTab(tab);
+    } else if (!tab) {
+      // If no tab parameter, default to login
+      setActiveTab("login");
     }
   }, [searchParams]);
+
+  // Listen for custom authTabChange event (for programmatic tab switching)
+  useEffect(() => {
+    const handleTabChange = (event) => {
+      if (event.detail?.tab === "login" || event.detail?.tab === "register") {
+        setActiveTab(event.detail.tab);
+      }
+    };
+
+    window.addEventListener("authTabChange", handleTabChange);
+    return () => {
+      window.removeEventListener("authTabChange", handleTabChange);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
@@ -240,7 +259,7 @@ const SignInPageContent = () => {
                         />
 
                         <div className="flex items-center justify-between text-sm">
-                          <FormField
+                          {/* <FormField
                             control={signInForm.control}
                             name="remember_me"
                             render={({ field }) => (
@@ -256,7 +275,7 @@ const SignInPageContent = () => {
                                 </FormLabel>
                               </FormItem>
                             )}
-                          />
+                          /> */}
                           {/* <Link
                             href="/auth/forgot-password"
                             className="text-primary hover:underline"
@@ -325,9 +344,13 @@ const SignInPageContent = () => {
                   <TabsContent value="register" className="space-y-4">
                     <Form {...signUpForm}>
                       <form
-                        onSubmit={signUpForm.handleSubmit((data) =>
-                          signUpMutate(data)
-                        )}
+                        onSubmit={signUpForm.handleSubmit((data) => {
+                          if (!termsAccepted) {
+                            toast.error("Please accept the Terms of Service and Privacy Policy first");
+                            return;
+                          }
+                          signUpMutate(data);
+                        })}
                         className="space-y-4 max-h-[500px] overflow-y-auto pr-2"
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -482,7 +505,8 @@ const SignInPageContent = () => {
                           <Checkbox
                             id="terms"
                             className="mt-1"
-                            required
+                            checked={termsAccepted}
+                            onCheckedChange={(checked) => setTermsAccepted(checked)}
                           />
                           <label
                             htmlFor="terms"

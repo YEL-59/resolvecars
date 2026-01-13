@@ -43,9 +43,15 @@ export const useSignUp = () => {
     },
     onSuccess: (data) => {
       toast.success(data?.message || "User registered successfully");
-      // Stay on the same page but switch to login tab
-      // The page will handle tab switching via URL or state if needed
-      router.push("/auth");
+      // Navigate to auth page and switch to login tab
+      // Use replace to ensure URL updates even if already on /auth
+      const params = new URLSearchParams();
+      params.set("tab", "login");
+      router.replace(`/auth?${params.toString()}`);
+      // Dispatch custom event to ensure tab switches
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("authTabChange", { detail: { tab: "login" } }));
+      }
     },
     onError: (error) => {
       const message =
