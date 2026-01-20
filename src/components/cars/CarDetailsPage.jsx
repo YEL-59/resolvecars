@@ -76,14 +76,53 @@ export default function CarDetailsPage({ carId }) {
   };
 
   // Calculate rental period from booking storage
+  // Logic: After each 24-hour period, if there's any additional time (even 1 minute), charge an extra day
   const calculateRentalDays = () => {
     const step1Data = bookingStorage.getStep("step1") || {};
     if (step1Data.pickupDate && step1Data.dropoffDate) {
       try {
-        const pickup = new Date(step1Data.pickupDate);
-        const dropoff = new Date(step1Data.dropoffDate);
-        const diffTime = Math.abs(dropoff - pickup);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const pickupDate = new Date(step1Data.pickupDate);
+        const dropoffDate = new Date(step1Data.dropoffDate);
+        
+        // Get times from booking storage, default to "12:00" if not available
+        const pickupTime = step1Data.pickup_time || "12:00";
+        const returnTime = step1Data.return_time || "12:00";
+        
+        // Parse time strings
+        const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
+        const [returnHour, returnMin] = returnTime.split(":").map(Number);
+        
+        // Create complete datetime objects
+        const pickupDateTime = new Date(
+          pickupDate.getFullYear(),
+          pickupDate.getMonth(),
+          pickupDate.getDate(),
+          pickupHour,
+          pickupMin,
+          0,
+          0,
+        );
+        
+        const returnDateTime = new Date(
+          dropoffDate.getFullYear(),
+          dropoffDate.getMonth(),
+          dropoffDate.getDate(),
+          returnHour,
+          returnMin,
+          0,
+          0,
+        );
+        
+        // Calculate total time difference in milliseconds
+        const timeDiffMs = returnDateTime - pickupDateTime;
+        
+        // Convert to hours
+        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+        
+        // Calculate days: divide by 24 and round up to nearest integer
+        // This ensures any time over a 24-hour period adds another day
+        const diffDays = Math.ceil(timeDiffHours / 24);
+        
         return diffDays > 0 ? diffDays : 1;
       } catch {
         return 1;
