@@ -34,7 +34,7 @@ const TimeSelector = ({ value, onChange, label }) => {
   // Generate time options from 00:00 to 23:30 in 30-minute intervals
   for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
-      const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      const timeString = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
       timeOptions.push(timeString);
     }
   }
@@ -48,21 +48,26 @@ const TimeSelector = ({ value, onChange, label }) => {
             variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
-              !value && "text-gray-400"
+              !value && "text-gray-400",
             )}
           >
             <Clock className="mr-2 h-5 w-5 text-gray-400" />
             <span className="text-sm">{value || "HH:MM"}</span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 z-50" align="start" sideOffset={8}>
+        <PopoverContent
+          className="w-auto p-0 z-50"
+          align="start"
+          sideOffset={8}
+        >
           <div className="timer-options max-h-[300px] overflow-y-auto p-2">
             {timeOptions.map((time) => (
               <div
                 key={time}
                 className={cn(
                   "timer-option px-4 py-2 cursor-pointer hover:bg-blue-50 rounded transition-colors",
-                  value === time && "selected bg-blue-100 text-blue-700 font-semibold"
+                  value === time &&
+                    "selected bg-blue-100 text-blue-700 font-semibold",
                 )}
                 data-value={time}
                 onClick={() => {
@@ -86,7 +91,7 @@ const SearchableLocationInput = ({
   onChange,
   onLocationSelect,
   placeholder = "City, airport...",
-  label
+  label,
 }) => {
   const [searchQuery, setSearchQuery] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -97,19 +102,20 @@ const SearchableLocationInput = ({
   // Fetch locations from API
   const { data, isLoading } = useLocations({
     per_page: 15,
-    search: searchQuery.trim() || undefined
+    search: searchQuery.trim() || undefined,
   });
 
   // Get locations and filter client-side if needed (as fallback)
   const allLocations = data?.locations || [];
-  const locations = searchQuery.trim().length > 0
-    ? allLocations.filter(
-      (loc) =>
-        loc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loc.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loc.city?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    : allLocations;
+  const locations =
+    searchQuery.trim().length > 0
+      ? allLocations.filter(
+          (loc) =>
+            loc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            loc.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            loc.city?.toLowerCase().includes(searchQuery.toLowerCase()),
+        )
+      : allLocations;
 
   useEffect(() => {
     // Always sync the value, including when it's cleared to empty string
@@ -209,14 +215,18 @@ const SearchableLocationInput = ({
           className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
         >
           {isLoading ? (
-            <div className="px-4 py-3 text-sm text-gray-500">Loading locations...</div>
+            <div className="px-4 py-3 text-sm text-gray-500">
+              Loading locations...
+            </div>
           ) : locations.length > 0 ? (
             locations.map((location) => {
               const displayAddress = [
                 location.address,
                 location.city,
-                location.country
-              ].filter(Boolean).join(", ");
+                location.country,
+              ]
+                .filter(Boolean)
+                .join(", ");
 
               return (
                 <button
@@ -225,13 +235,19 @@ const SearchableLocationInput = ({
                   onClick={() => handleSelectLocation(location)}
                   className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
                 >
-                  <div className="font-medium text-gray-900">{location.name}</div>
-                  <div className="text-sm text-gray-500">{displayAddress || location.address}</div>
+                  <div className="font-medium text-gray-900">
+                    {location.name}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {displayAddress || location.address}
+                  </div>
                 </button>
               );
             })
           ) : searchQuery.trim().length > 0 ? (
-            <div className="px-4 py-3 text-sm text-gray-500">No locations found</div>
+            <div className="px-4 py-3 text-sm text-gray-500">
+              No locations found
+            </div>
           ) : null}
         </div>
       )}
@@ -263,64 +279,98 @@ const CarsHeroSection = () => {
   useEffect(() => {
     // Check if we're on /cars page and if URL has search params
     const urlParams = new URLSearchParams(window.location.search);
-    const hasUrlSearchParams = urlParams.has("pickup_location_id") ||
+    const hasUrlSearchParams =
+      urlParams.has("pickup_location_id") ||
       urlParams.has("pickup_date") ||
       urlParams.has("return_date");
 
     // Only load from storage if URL has no search params
     // If URL has params, they will be loaded by CarsCardSection component
     if (!hasUrlSearchParams) {
-    const step1 = bookingStorage.getStep("step1") || {};
-    try {
-      if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
-      if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
-      if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
-      if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
-      if (step1.dropoffLocation) {
-        setReturnLocation(step1.dropoffLocation);
+      const step1 = bookingStorage.getStep("step1") || {};
+      try {
+        if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
+        if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
+        if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
+        if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
+        if (step1.dropoffLocation) {
+          setReturnLocation(step1.dropoffLocation);
         }
-        if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
+        if (step1.dropoffLocationId)
+          setReturnLocationId(step1.dropoffLocationId);
         // Load location prices
-        if (step1.pickupLocationPrice) setPickupLocationPrice(step1.pickupLocationPrice);
-        if (step1.returnLocationPrice) setReturnLocationPrice(step1.returnLocationPrice);
+        if (step1.pickupLocationPrice)
+          setPickupLocationPrice(step1.pickupLocationPrice);
+        if (step1.returnLocationPrice)
+          setReturnLocationPrice(step1.returnLocationPrice);
         // Load sameStore flag
-        if (typeof step1.sameStore === 'boolean') {
+        if (typeof step1.sameStore === "boolean") {
           setSameStore(step1.sameStore);
         } else if (step1.pickupLocation && step1.dropoffLocation) {
-        setSameStore(step1.pickupLocation === step1.dropoffLocation);
-      }
-    } catch { }
+          setSameStore(step1.pickupLocation === step1.dropoffLocation);
+        }
+      } catch {}
     }
   }, []);
 
-  // Calculate period in days
-  // Base calculation: difference in days between pickup and return dates
-  // If return time is 30+ minutes later than pickup time, add an extra day
-  const periodDays = pickupDate && returnDate && pickupTime && returnTime
-    ? (() => {
-      // Calculate base days difference (without +1)
-      const baseDays = differenceInDays(returnDate, pickupDate);
+  // Calculate period in days based on strict 24-hour periods
+  // Logic: After each 24-hour period, if there's any additional time (even 1 minute), charge an extra day
+  // Example: Pickup 20/1/2026 11:00 AM, Return 22/1/2026 11:00 AM = 2 days (exactly 48 hours)
+  // Example: Pickup 20/1/2026 11:00 AM, Return 22/1/2026 11:01 AM = 3 days (48 hours + 1 minute)
+  const periodDays =
+    pickupDate && returnDate && pickupTime && returnTime
+      ? (() => {
+          // Create complete datetime objects for pickup and return
+          const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
+          const [returnHour, returnMin] = returnTime.split(":").map(Number);
 
-      // Parse times to compare
-      const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
-      const [returnHour, returnMin] = returnTime.split(":").map(Number);
+          // Create fresh datetime objects to avoid timezone issues
+          // Extract year, month, day from the date objects
+          const pickupDateTime = new Date(
+            pickupDate.getFullYear(),
+            pickupDate.getMonth(),
+            pickupDate.getDate(),
+            pickupHour,
+            pickupMin,
+            0,
+            0,
+          );
 
-      // Convert to total minutes for comparison
-      const pickupTotalMinutes = pickupHour * 60 + pickupMin;
-      const returnTotalMinutes = returnHour * 60 + returnMin;
+          const returnDateTime = new Date(
+            returnDate.getFullYear(),
+            returnDate.getMonth(),
+            returnDate.getDate(),
+            returnHour,
+            returnMin,
+            0,
+            0,
+          );
 
-      // If return time is 30+ minutes later than pickup time, add 1 day
-      let days = baseDays;
-      if (returnTotalMinutes >= pickupTotalMinutes + 30) {
-        days = baseDays + 1;
-      }
+          // Calculate total time difference in milliseconds
+          const timeDiffMs = returnDateTime - pickupDateTime;
 
-      // Ensure minimum of 1 day
-      return Math.max(1, days);
-    })()
-    : pickupDate && returnDate
-      ? Math.max(1, differenceInDays(returnDate, pickupDate))
-      : 0;
+          // Convert to hours
+          const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+
+          // Calculate days: divide by 24 and round up to nearest integer
+          // This ensures any time over a 24-hour period adds another day
+          let days = Math.ceil(timeDiffHours / 24);
+
+          // Debug logging
+          console.log("=== PERIOD CALCULATION DEBUG ===");
+          console.log("Pickup DateTime:", pickupDateTime.toString());
+          console.log("Return DateTime:", returnDateTime.toString());
+          console.log("Time Diff (ms):", timeDiffMs);
+          console.log("Time Diff (hours):", timeDiffHours);
+          console.log("Calculated Days (Math.ceil):", days);
+          console.log("===============================");
+
+          // Ensure minimum of 1 day
+          return Math.max(1, days);
+        })()
+      : pickupDate && returnDate
+        ? Math.max(1, differenceInDays(returnDate, pickupDate))
+        : 0;
 
   // Format date as DD/MM/YYYY
   const formatDate = (date) => {
@@ -432,7 +482,7 @@ const CarsHeroSection = () => {
     // Calculate location fee: same location = 0 (no charge), different = sum of both prices
     const finalPickupPrice = pickupLocationPrice || 0;
     const finalReturnPrice = returnLocationPrice || 0;
-    const locationFee = sameStore ? 0 : (finalPickupPrice + finalReturnPrice);
+    const locationFee = sameStore ? 0 : finalPickupPrice + finalReturnPrice;
 
     console.log("CarsHeroSection: Storing location fee data:", {
       pickupLocationPrice: finalPickupPrice,
@@ -469,10 +519,13 @@ const CarsHeroSection = () => {
     });
 
     // Include times (always include them, even if default 12:00, for consistency)
-      searchParams.append("pickup_time", formattedPickupTime);
-      searchParams.append("return_time", formattedReturnTime);
+    searchParams.append("pickup_time", formattedPickupTime);
+    searchParams.append("return_time", formattedReturnTime);
 
-    console.log("Navigating to /cars with search params:", searchParams.toString());
+    console.log(
+      "Navigating to /cars with search params:",
+      searchParams.toString(),
+    );
     router.push(`/cars?${searchParams.toString()}`);
   };
 
@@ -497,7 +550,7 @@ const CarsHeroSection = () => {
 
   // Add custom styles for react-datepicker
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       .react-datepicker {
         font-family: inherit !important;
@@ -564,10 +617,12 @@ const CarsHeroSection = () => {
       <div className="bg-[#3B82F6] p-4 sm:p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
         <div className="space-y-4 sm:space-y-6">
           {/* Location Fields */}
-          <div className={cn(
-            "grid gap-4",
-            sameStore ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
-          )}>
+          <div
+            className={cn(
+              "grid gap-4",
+              sameStore ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2",
+            )}
+          >
             {/* Pick-up/Return Store */}
             <div className="space-y-2">
               <label className="text-xs text-gray-100 block">
@@ -617,15 +672,20 @@ const CarsHeroSection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Pick-up Date & Time Group */}
             <div className="border-2 border-blue-400 rounded-lg p-3 bg-white/10">
-              <Popover open={calendarOpen && activeTrigger === "pickup"} onOpenChange={(open) => {
-                setCalendarOpen(open);
-                if (open) setActiveTrigger("pickup");
-                else setActiveTrigger(null);
-              }}>
+              <Popover
+                open={calendarOpen && activeTrigger === "pickup"}
+                onOpenChange={(open) => {
+                  setCalendarOpen(open);
+                  if (open) setActiveTrigger("pickup");
+                  else setActiveTrigger(null);
+                }}
+              >
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {/* Pick-up Date */}
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-100 block">Pick-up date</label>
+                    <label className="text-xs text-gray-100 block">
+                      Pick-up date
+                    </label>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -635,7 +695,7 @@ const CarsHeroSection = () => {
                         }}
                         className={cn(
                           "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
-                          !pickupDate && "text-gray-400"
+                          !pickupDate && "text-gray-400",
                         )}
                       >
                         <CalendarIcon className="mr-2 h-5 w-5 text-gray-400" />
@@ -690,15 +750,20 @@ const CarsHeroSection = () => {
 
             {/* Return Date & Time Group */}
             <div className="border-2 border-blue-400 rounded-lg p-3 bg-white/10">
-              <Popover open={calendarOpen && activeTrigger === "return"} onOpenChange={(open) => {
-                setCalendarOpen(open);
-                if (open) setActiveTrigger("return");
-                else setActiveTrigger(null);
-              }}>
+              <Popover
+                open={calendarOpen && activeTrigger === "return"}
+                onOpenChange={(open) => {
+                  setCalendarOpen(open);
+                  if (open) setActiveTrigger("return");
+                  else setActiveTrigger(null);
+                }}
+              >
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {/* Return Date */}
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-100 block">Return date</label>
+                    <label className="text-xs text-gray-100 block">
+                      Return date
+                    </label>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -708,7 +773,7 @@ const CarsHeroSection = () => {
                         }}
                         className={cn(
                           "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
-                          !returnDate && "text-gray-400"
+                          !returnDate && "text-gray-400",
                         )}
                       >
                         <CalendarIcon className="mr-2 h-5 w-5 text-gray-400" />
@@ -752,7 +817,15 @@ const CarsHeroSection = () => {
                         selectsEnd
                         startDate={pickupDate}
                         endDate={returnDate}
-                        minDate={pickupDate ? new Date(new Date(pickupDate).setDate(pickupDate.getDate() + 1)) : new Date()}
+                        minDate={
+                          pickupDate
+                            ? new Date(
+                                new Date(pickupDate).setDate(
+                                  pickupDate.getDate() + 1,
+                                ),
+                              )
+                            : new Date()
+                        }
                         monthsShown={isMobile ? 1 : 2}
                         inline
                         calendarClassName="!border-0"
@@ -766,10 +839,10 @@ const CarsHeroSection = () => {
 
           {/* Period Display */}
           {pickupDate && returnDate && (
-            <div className="relative">
-              <div className="border-t border-dashed border-gray-300"></div>
-              <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-[#3B82F6] px-3 sm:px-4">
-                <span className="text-xs sm:text-sm text-gray-100">
+            <div className="relative my-4">
+              <div className="border-t border-dashed border-white/40"></div>
+              <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-[#3B82F6] px-4 sm:px-6">
+                <span className="text-base sm:text-lg font-bold text-white">
                   Period: {periodDays} {periodDays === 1 ? "day" : "days"}
                 </span>
               </div>
@@ -812,7 +885,12 @@ const CarsHeroSection = () => {
             {/* Action Buttons */}
             <div className="flex gap-3 w-full md:w-auto">
               {/* Clear Button - Show if any field has data */}
-              {(pickupDate || returnDate || pickupLocation || returnLocation || pickupLocationId || returnLocationId) && (
+              {(pickupDate ||
+                returnDate ||
+                pickupLocation ||
+                returnLocation ||
+                pickupLocationId ||
+                returnLocationId) && (
                 <Button
                   onClick={handleClear}
                   variant="outline"
@@ -823,14 +901,14 @@ const CarsHeroSection = () => {
                 </Button>
               )}
 
-            {/* Search Button */}
-            <Button
-              onClick={handleSearch}
-              className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
-            >
-              <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-              SEARCH
-            </Button>
+              {/* Search Button */}
+              <Button
+                onClick={handleSearch}
+                className="bg-[#1E40AF] hover:bg-[#1E3A8A] text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
+              >
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                SEARCH
+              </Button>
             </div>
           </div>
         </div>

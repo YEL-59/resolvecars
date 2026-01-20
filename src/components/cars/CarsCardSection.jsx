@@ -156,6 +156,7 @@ export default function CarsCardSection() {
   }, [hasSearchParams, searchCarsQuery.data, searchCarsQuery.isLoading, searchCarsQuery.isError, pickupLocationId, returnLocationId, pickupDate, returnDate]);
 
   // Calculate rental days from search API meta, search params, or booking storage
+  // Logic: After each 24-hour period, if there's any additional time (even 1 minute), charge an extra day
   useEffect(() => {
     // First, try to use rental_period.days from search API meta
     if (data?.meta?.rental_period?.days) {
@@ -163,45 +164,110 @@ export default function CarsCardSection() {
       return;
     }
 
-    // Otherwise, calculate from dates
-    if (pickupDate && returnDate) {
+    // Helper function to calculate days from dates and times
+    const calculateDaysFromDateTime = (pickupDateStr, returnDateStr, pickupTimeStr, returnTimeStr) => {
       try {
-        const pickup = new Date(pickupDate);
-        const returnD = new Date(returnDate);
-        const diffTime = Math.abs(returnD - pickup);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        setRentalDays(diffDays > 0 ? diffDays : 1);
+        // Parse date strings (format: YYYY-MM-DD)
+        const pickupDateParts = pickupDateStr.split("-");
+        const returnDateParts = returnDateStr.split("-");
+        
+        // Parse time strings (format: HH:mm)
+        const [pickupHour, pickupMin] = (pickupTimeStr || "12:00").split(":").map(Number);
+        const [returnHour, returnMin] = (returnTimeStr || "12:00").split(":").map(Number);
+        
+        // Create complete datetime objects
+        const pickupDateTime = new Date(
+          parseInt(pickupDateParts[0]),
+          parseInt(pickupDateParts[1]) - 1, // Month is 0-indexed
+          parseInt(pickupDateParts[2]),
+          pickupHour,
+          pickupMin,
+          0,
+          0,
+        );
+        
+        const returnDateTime = new Date(
+          parseInt(returnDateParts[0]),
+          parseInt(returnDateParts[1]) - 1, // Month is 0-indexed
+          parseInt(returnDateParts[2]),
+          returnHour,
+          returnMin,
+          0,
+          0,
+        );
+        
+        // Calculate total time difference in milliseconds
+        const timeDiffMs = returnDateTime - pickupDateTime;
+        
+        // Convert to hours
+        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+        
+        // Calculate days: divide by 24 and round up to nearest integer
+        const diffDays = Math.ceil(timeDiffHours / 24);
+        
+        return diffDays > 0 ? diffDays : 1;
       } catch {
-        // Fallback to booking storage
-        const step1Data = bookingStorage.getStep("step1") || {};
-        if (step1Data.pickupDate && step1Data.dropoffDate) {
-          try {
-            const pickup = new Date(step1Data.pickupDate);
-            const dropoff = new Date(step1Data.dropoffDate);
-            const diffTime = Math.abs(dropoff - pickup);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            setRentalDays(diffDays > 0 ? diffDays : 23);
-          } catch {
-            setRentalDays(23);
-          }
+        return null;
+      }
+    };
+
+    // Calculate from URL params if available
+    if (pickupDate && returnDate) {
+      const calculatedDays = calculateDaysFromDateTime(pickupDate, returnDate, pickupTime, returnTime);
+      if (calculatedDays !== null) {
+        setRentalDays(calculatedDays);
+        return;
+      }
+      
+      // Fallback to booking storage
+      const step1Data = bookingStorage.getStep("step1") || {};
+      if (step1Data.pickupDate && step1Data.dropoffDate) {
+        // Extract date part from ISO string if needed
+        const pickupDateStr = step1Data.pickupDate instanceof Date 
+          ? step1Data.pickupDate.toISOString().split("T")[0]
+          : step1Data.pickupDate.split("T")[0];
+        const returnDateStr = step1Data.dropoffDate instanceof Date
+          ? step1Data.dropoffDate.toISOString().split("T")[0]
+          : step1Data.dropoffDate.split("T")[0];
+        
+        const calculatedDaysFromStorage = calculateDaysFromDateTime(
+          pickupDateStr,
+          returnDateStr,
+          step1Data.pickup_time || "12:00",
+          step1Data.return_time || "12:00"
+        );
+        if (calculatedDaysFromStorage !== null) {
+          setRentalDays(calculatedDaysFromStorage);
+          return;
         }
       }
+      setRentalDays(23);
     } else {
       // Fallback to booking storage
       const step1Data = bookingStorage.getStep("step1") || {};
       if (step1Data.pickupDate && step1Data.dropoffDate) {
-        try {
-          const pickup = new Date(step1Data.pickupDate);
-          const dropoff = new Date(step1Data.dropoffDate);
-          const diffTime = Math.abs(dropoff - pickup);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          setRentalDays(diffDays > 0 ? diffDays : 23);
-        } catch {
-          setRentalDays(23);
+        // Extract date part from ISO string if needed
+        const pickupDateStr = step1Data.pickupDate instanceof Date 
+          ? step1Data.pickupDate.toISOString().split("T")[0]
+          : step1Data.pickupDate.split("T")[0];
+        const returnDateStr = step1Data.dropoffDate instanceof Date
+          ? step1Data.dropoffDate.toISOString().split("T")[0]
+          : step1Data.dropoffDate.split("T")[0];
+        
+        const calculatedDaysFromStorage = calculateDaysFromDateTime(
+          pickupDateStr,
+          returnDateStr,
+          step1Data.pickup_time || "12:00",
+          step1Data.return_time || "12:00"
+        );
+        if (calculatedDaysFromStorage !== null) {
+          setRentalDays(calculatedDaysFromStorage);
+          return;
         }
       }
+      setRentalDays(23);
     }
-  }, [pickupDate, returnDate, data?.meta?.rental_period?.days]);
+  }, [pickupDate, returnDate, pickupTime, returnTime, data?.meta?.rental_period?.days]);
 
   // Get available categories from API data
   // Filter functionality commented out
