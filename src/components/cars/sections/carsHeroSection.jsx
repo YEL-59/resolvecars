@@ -67,7 +67,7 @@ const TimeSelector = ({ value, onChange, label }) => {
                 className={cn(
                   "timer-option px-4 py-2 cursor-pointer hover:bg-blue-50 rounded transition-colors",
                   value === time &&
-                    "selected bg-blue-100 text-blue-700 font-semibold",
+                  "selected bg-blue-100 text-blue-700 font-semibold",
                 )}
                 data-value={time}
                 onClick={() => {
@@ -110,11 +110,11 @@ const SearchableLocationInput = ({
   const locations =
     searchQuery.trim().length > 0
       ? allLocations.filter(
-          (loc) =>
-            loc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            loc.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            loc.city?.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
+        (loc) =>
+          loc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          loc.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          loc.city?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
       : allLocations;
 
   useEffect(() => {
@@ -274,6 +274,18 @@ const CarsHeroSection = () => {
   const [sameStore, setSameStore] = useState(true);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
 
+  // Office hours: 8:00 to 21:00 (8 AM to 9 PM)
+  const OFFICE_START_HOUR = 8;
+  const OFFICE_END_HOUR = 21;
+  const OUT_OF_OFFICE_FEE = 40;
+
+  // Check if time is outside office hours
+  const isOutOfOfficeHours = (timeString) => {
+    if (!timeString) return false;
+    const [hour] = timeString.split(":").map(Number);
+    return hour < OFFICE_START_HOUR || hour >= OFFICE_END_HOUR;
+  };
+
   // Load existing booking data only if URL has no search params
   // This prevents reloading cleared data when user navigates back
   useEffect(() => {
@@ -309,7 +321,11 @@ const CarsHeroSection = () => {
         } else if (step1.pickupLocation && step1.dropoffLocation) {
           setSameStore(step1.pickupLocation === step1.dropoffLocation);
         }
-      } catch {}
+        // Load ageConfirmed flag
+        if (typeof step1.ageConfirmed === "boolean") {
+          setAgeConfirmed(step1.ageConfirmed);
+        }
+      } catch { }
     }
   }, []);
 
@@ -320,57 +336,64 @@ const CarsHeroSection = () => {
   const periodDays =
     pickupDate && returnDate && pickupTime && returnTime
       ? (() => {
-          // Create complete datetime objects for pickup and return
-          const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
-          const [returnHour, returnMin] = returnTime.split(":").map(Number);
+        // Create complete datetime objects for pickup and return
+        const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
+        const [returnHour, returnMin] = returnTime.split(":").map(Number);
 
-          // Create fresh datetime objects to avoid timezone issues
-          // Extract year, month, day from the date objects
-          const pickupDateTime = new Date(
-            pickupDate.getFullYear(),
-            pickupDate.getMonth(),
-            pickupDate.getDate(),
-            pickupHour,
-            pickupMin,
-            0,
-            0,
-          );
+        // Create fresh datetime objects to avoid timezone issues
+        // Extract year, month, day from the date objects
+        const pickupDateTime = new Date(
+          pickupDate.getFullYear(),
+          pickupDate.getMonth(),
+          pickupDate.getDate(),
+          pickupHour,
+          pickupMin,
+          0,
+          0,
+        );
 
-          const returnDateTime = new Date(
-            returnDate.getFullYear(),
-            returnDate.getMonth(),
-            returnDate.getDate(),
-            returnHour,
-            returnMin,
-            0,
-            0,
-          );
+        const returnDateTime = new Date(
+          returnDate.getFullYear(),
+          returnDate.getMonth(),
+          returnDate.getDate(),
+          returnHour,
+          returnMin,
+          0,
+          0,
+        );
 
-          // Calculate total time difference in milliseconds
-          const timeDiffMs = returnDateTime - pickupDateTime;
+        // Calculate total time difference in milliseconds
+        const timeDiffMs = returnDateTime - pickupDateTime;
 
-          // Convert to hours
-          const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+        // Convert to hours
+        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
 
-          // Calculate days: divide by 24 and round up to nearest integer
-          // This ensures any time over a 24-hour period adds another day
-          let days = Math.ceil(timeDiffHours / 24);
+        // Calculate days: divide by 24 and round up to nearest integer
+        // This ensures any time over a 24-hour period adds another day
+        let days = Math.ceil(timeDiffHours / 24);
 
-          // Debug logging
-          console.log("=== PERIOD CALCULATION DEBUG ===");
-          console.log("Pickup DateTime:", pickupDateTime.toString());
-          console.log("Return DateTime:", returnDateTime.toString());
-          console.log("Time Diff (ms):", timeDiffMs);
-          console.log("Time Diff (hours):", timeDiffHours);
-          console.log("Calculated Days (Math.ceil):", days);
-          console.log("===============================");
+        // Debug logging
+        console.log("=== PERIOD CALCULATION DEBUG ===");
+        console.log("Pickup DateTime:", pickupDateTime.toString());
+        console.log("Return DateTime:", returnDateTime.toString());
+        console.log("Time Diff (ms):", timeDiffMs);
+        console.log("Time Diff (hours):", timeDiffHours);
+        console.log("Calculated Days (Math.ceil):", days);
+        console.log("===============================");
 
-          // Ensure minimum of 1 day
-          return Math.max(1, days);
-        })()
+        // Ensure minimum of 1 day
+        return Math.max(1, days);
+      })()
       : pickupDate && returnDate
         ? Math.max(1, differenceInDays(returnDate, pickupDate))
         : 0;
+
+  // Calculate out-of-office fee (40 if any time is outside office hours)
+  const outOfOfficeFee =
+    (pickupTime && isOutOfOfficeHours(pickupTime)) ||
+      (returnTime && isOutOfOfficeHours(returnTime))
+      ? OUT_OF_OFFICE_FEE
+      : 0;
 
   // Format date as DD/MM/YYYY
   const formatDate = (date) => {
@@ -484,11 +507,17 @@ const CarsHeroSection = () => {
     const finalReturnPrice = returnLocationPrice || 0;
     const locationFee = sameStore ? 0 : finalPickupPrice + finalReturnPrice;
 
-    console.log("CarsHeroSection: Storing location fee data:", {
+    // Calculate out-of-office fee (40 if any time is outside office hours 8:00-21:00)
+    const finalOutOfOfficeFee = outOfOfficeFee || 0;
+
+    console.log("CarsHeroSection: Storing location fee and out-of-office fee data:", {
       pickupLocationPrice: finalPickupPrice,
       returnLocationPrice: finalReturnPrice,
       locationFee: locationFee,
       sameStore: sameStore,
+      outOfOfficeFee: finalOutOfOfficeFee,
+      pickupTime: formattedPickupTime,
+      returnTime: formattedReturnTime,
     });
 
     bookingStorage.updateStep("step1", {
@@ -501,12 +530,14 @@ const CarsHeroSection = () => {
       dropoffLocationId: finalReturnId,
       returnLocationPrice: finalReturnPrice,
       locationFee: locationFee,
+      outOfOfficeFee: finalOutOfOfficeFee,
       sameStore: sameStore,
+      ageConfirmed: ageConfirmed,
       pickup_time: formattedPickupTime,
       return_time: formattedReturnTime,
       requirements: "",
       protectionPlan: "basic",
-      extras: [],
+      extras: !ageConfirmed ? ["youngDriver"] : [],
     });
 
     // Navigate to cars page with search parameters
@@ -516,6 +547,7 @@ const CarsHeroSection = () => {
       return_location_id: finalReturnId.toString(), // Always include return_location_id
       pickup_date: formattedPickupDate,
       return_date: formattedReturnDate,
+      age_confirmed: ageConfirmed.toString(),
     });
 
     // Include times (always include them, even if default 12:00, for consistency)
@@ -820,10 +852,10 @@ const CarsHeroSection = () => {
                         minDate={
                           pickupDate
                             ? new Date(
-                                new Date(pickupDate).setDate(
-                                  pickupDate.getDate() + 1,
-                                ),
-                              )
+                              new Date(pickupDate).setDate(
+                                pickupDate.getDate() + 1,
+                              ),
+                            )
                             : new Date()
                         }
                         monthsShown={isMobile ? 1 : 2}
@@ -891,15 +923,15 @@ const CarsHeroSection = () => {
                 returnLocation ||
                 pickupLocationId ||
                 returnLocationId) && (
-                <Button
-                  onClick={handleClear}
-                  variant="outline"
-                  className="bg-white/10 hover:bg-white/20 text-white border-white/30 px-4 sm:px-6 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
-                >
-                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
-                  CLEAR
-                </Button>
-              )}
+                  <Button
+                    onClick={handleClear}
+                    variant="outline"
+                    className="bg-white/10 hover:bg-white/20 text-white border-white/30 px-4 sm:px-6 py-4 sm:py-6 text-sm sm:text-base font-medium flex items-center justify-center gap-2 w-full md:w-auto"
+                  >
+                    <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+                    CLEAR
+                  </Button>
+                )}
 
               {/* Search Button */}
               <Button

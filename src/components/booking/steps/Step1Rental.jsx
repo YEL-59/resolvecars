@@ -707,6 +707,16 @@ export default function Step1Rental({ onNext }) {
     return total;
   }, [carBasePriceTotal, baseRateTotal, addonsTotal, locationFee, outOfOfficeFee]);
 
+  // Calculate payment breakdown: 30% upfront, 70% after journey
+  const upfrontPaymentPercentage = 30;
+  const remainingPaymentPercentage = 70;
+  const upfrontPayment = useMemo(() => {
+    return (grandTotal * upfrontPaymentPercentage) / 100;
+  }, [grandTotal]);
+  const remainingPayment = useMemo(() => {
+    return (grandTotal * remainingPaymentPercentage) / 100;
+  }, [grandTotal]);
+
   // Prepare booking data for API
   const prepareBookingData = () => {
     // Get ALL booking data first to debug
@@ -1064,11 +1074,17 @@ export default function Step1Rental({ onNext }) {
     const protectionPlanCost = 0; // Currently not used, set to 0.00
     const addonsCost = step1Data.addonsTotal || addonsTotal || 0;
     const locationCost = step1Data.locationFee || locationFee || 0; // Location fee
-    const subtotal = step1Data.subtotal || (baseRentalCost + packageCost + addonsCost + locationCost);
+    const outOfOfficeCost = step1Data.outOfOfficeFee || outOfOfficeFee || 0; // Out-of-office fee
+    const subtotal = step1Data.subtotal || (baseRentalCost + packageCost + addonsCost + locationCost + outOfOfficeCost);
     // Tax calculation commented out - set to 0
     const taxPercentage = 0;
     const taxAmount = 0;
     const totalAmount = step1Data.total_amount || step1Data.total || subtotal;
+
+    // Calculate upfront payment (30% of total) and remaining payment (70%)
+    const upfrontPaymentPercentage = 30;
+    const upfrontPaymentAmount = (totalAmount * upfrontPaymentPercentage) / 100;
+    const remainingPaymentAmount = (totalAmount * (100 - upfrontPaymentPercentage)) / 100;
 
     // Format all amounts as strings with 2 decimal places (matching API format)
     const formatAmount = (amount) => {
@@ -1088,10 +1104,14 @@ export default function Step1Rental({ onNext }) {
       protection_plan_cost: formatAmount(protectionPlanCost),
       addons_cost: formatAmount(addonsCost),
       location_fee: formatAmount(locationCost), // Location fee
+      out_of_office_fee: formatAmount(outOfOfficeCost), // Out-of-office fee
       subtotal: formatAmount(subtotal),
       tax_percentage: formatAmount(taxPercentage),
       tax_amount: formatAmount(taxAmount),
       total_amount: formatAmount(totalAmount),
+      upfront_payment_amount: formatAmount(upfrontPaymentAmount), // 30% upfront payment
+      remaining_payment_amount: formatAmount(remainingPaymentAmount), // 70% remaining payment
+      upfront_payment_percentage: upfrontPaymentPercentage, // 30%
       addons: addons, // Always include as array (can be empty)
     };
 
@@ -1119,10 +1139,14 @@ export default function Step1Rental({ onNext }) {
     console.log("Protection Plan Cost:", bookingPayload.protection_plan_cost);
     console.log("Addons Cost:", bookingPayload.addons_cost);
     console.log("Location Fee:", bookingPayload.location_fee);
+    console.log("Out-of-Office Fee:", bookingPayload.out_of_office_fee);
     console.log("Subtotal:", bookingPayload.subtotal);
     console.log("Tax Percentage:", bookingPayload.tax_percentage);
     console.log("Tax Amount:", bookingPayload.tax_amount);
     console.log("Total Amount:", bookingPayload.total_amount);
+    console.log("--- Payment Breakdown ---");
+    console.log("Upfront Payment (30%):", bookingPayload.upfront_payment_amount);
+    console.log("Remaining Payment (70%):", bookingPayload.remaining_payment_amount);
     console.log("=============================");
 
     return bookingPayload;
@@ -1298,9 +1322,17 @@ export default function Step1Rental({ onNext }) {
                 <p className="text-sm text-gray-600">
                   {currentPackageType === "premium" ? "Premium" : currentPackageType === "smart" ? "Smart" : currentPackageType === "lite" ? "Lite" : "Standard"} Rate x {rentalDays} days
                 </p>
-                <p className="text-xl font-bold text-gray-900">
-                  {grandTotal.toFixed(2)} €
-                </p>
+                <div>
+                  <p className="text-xl font-bold text-blue-700">
+                    {upfrontPayment.toFixed(2)} €
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Pay now (30% of {grandTotal.toFixed(2)} €)
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Remaining {remainingPayment.toFixed(2)} € after journey
+                  </p>
+                </div>
               </div>
 
               <div className="border-t border-gray-200 pt-4">
@@ -1507,8 +1539,24 @@ export default function Step1Rental({ onNext }) {
                       {grandTotal.toFixed(2)} €
                     </span>
                   </div>
+
+                  {/* Payment Breakdown: 30% upfront, 70% after journey */}
+                  <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-blue-700">Payment Now (30%):</span>
+                      <span className="text-lg font-bold text-blue-700">
+                        {upfrontPayment.toFixed(2)} €
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Balance After Journey (70%):</span>
+                      <span className="text-sm font-medium text-gray-600">
+                        {remainingPayment.toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-gray-600 mt-2">
+                {/* <p className="text-gray-600 mt-2">
                   Calculation: {carBasePrice ? `${carBasePriceTotal.toFixed(2)} € car` : ''}
                   {carBasePrice && carBasePrice.rental_days > 0 && ` (${carBasePrice.rental_days} days × ${carBasePrice.price_per_day.toFixed(2)} €)`}
                   {baseRateTotal > 0 && ` + ${baseRateTotal.toFixed(2)} € package`}
@@ -1516,17 +1564,20 @@ export default function Step1Rental({ onNext }) {
                   {outOfOfficeFee > 0 && ` + ${outOfOfficeFee.toFixed(2)} € out-of-office`}
                   {addonsTotal > 0 && ` + ${addonsTotal.toFixed(2)} € addons`}
                   {" = "}{grandTotal.toFixed(2)} € total
+                </p> */}
+                <p className="text-xs text-blue-600 mt-2 font-medium">
+                  Pay {upfrontPaymentPercentage}% now ({upfrontPayment.toFixed(2)} €), remaining {remainingPaymentPercentage}% ({remainingPayment.toFixed(2)} €) after journey
                 </p>
               </div>
 
               {/* Loyalty Points */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              {/* <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-xs text-gray-600">
                   Your booking gives you{" "}
                   {Math.floor(grandTotal)}{" "}
                   POINTS OK CLUB
                 </p>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -1680,9 +1731,13 @@ export default function Step1Rental({ onNext }) {
               </h2>
 
               <div className="space-y-4">
-                {/* Hardcoded extras: Foundation Donation and Child Seats */}
+                {/* Hardcoded extras: Foundation Donation, Child Seats, and Young Driver */}
                 {extrasData
-                  .filter((extra) => extra.id === "foundationDonation" || extra.id === "childSeat")
+                  .filter((extra) =>
+                    extra.id === "foundationDonation" ||
+                    extra.id === "childSeat" ||
+                    extra.id === "youngDriver"
+                  )
                   .map((extra) => {
                     const isIncluded = isExtraIncluded(extra.id);
                     const isChildSeat = extra.id === "childSeat";
@@ -1998,7 +2053,7 @@ export default function Step1Rental({ onNext }) {
               </>
             ) : (
               <>
-                CONTINUE
+                PAY {upfrontPaymentPercentage}% NOW ({upfrontPayment.toFixed(2)} €) & CONTINUE
                 <ArrowRight className="w-5 h-5" />
               </>
             )}

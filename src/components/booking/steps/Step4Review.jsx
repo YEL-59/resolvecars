@@ -150,6 +150,12 @@ export default function Step4Review({ onPrev }) {
     // Calculate grand total
     const grandTotal = carBasePrice + baseRateTotal + addonsTotal;
 
+    // Calculate payment breakdown: 30% upfront, 70% after journey
+    const upfrontPaymentPercentage = 30;
+    const remainingPaymentPercentage = 70;
+    const upfrontPayment = (grandTotal * upfrontPaymentPercentage) / 100;
+    const remainingPayment = (grandTotal * remainingPaymentPercentage) / 100;
+
     // Get payment method display name
     const paymentMethodName = step3.paymentMethod === "credit" ? "Credit Card" :
         step3.paymentMethod === "bizum" ? "Bizum" :
@@ -335,9 +341,26 @@ export default function Step4Review({ onPrev }) {
                                 <span className="text-gray-900 font-medium">{addonsTotal.toFixed(2)} €</span>
                             </div>
                         )}
-                        <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between">
-                            <span className="text-gray-900 font-bold text-base">Total:</span>
-                            <span className="text-gray-900 font-bold text-lg">{grandTotal.toFixed(2)} €</span>
+                        <div className="pt-2 mt-2 border-t border-gray-200">
+                            <div className="flex justify-between mb-2">
+                                <span className="text-gray-900 font-bold text-base">Total:</span>
+                                <span className="text-gray-900 font-bold text-lg">{grandTotal.toFixed(2)} €</span>
+                            </div>
+                            {/* Payment Breakdown: 30% upfront, 70% after journey */}
+                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-semibold text-blue-700">Payment Now (30%):</span>
+                                    <span className="text-base font-bold text-blue-700">
+                                        {upfrontPayment.toFixed(2)} €
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-gray-600">Balance After Journey (70%):</span>
+                                    <span className="text-xs font-medium text-gray-600">
+                                        {remainingPayment.toFixed(2)} €
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

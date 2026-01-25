@@ -284,60 +284,45 @@ const HeroSections = () => {
   // Example: Pickup 20/1/2026 11:00 AM, Return 22/1/2026 11:01 AM = 3 days (48 hours + 1 minute)
   const periodDays = pickupDate && returnDate && pickupTime && returnTime
     ? (() => {
-        // Create complete datetime objects for pickup and return
-        const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
-        const [returnHour, returnMin] = returnTime.split(":").map(Number);
+      // Create complete datetime objects for pickup and return
+      const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
+      const [returnHour, returnMin] = returnTime.split(":").map(Number);
 
-        // Create fresh datetime objects to avoid timezone issues
-        // Extract year, month, day from the date objects
-        const pickupDateTime = new Date(
-          pickupDate.getFullYear(),
-          pickupDate.getMonth(),
-          pickupDate.getDate(),
-          pickupHour,
-          pickupMin,
-          0,
-          0,
-        );
+      // Create fresh datetime objects to avoid timezone issues
+      // Extract year, month, day from the date objects
+      const pickupDateTime = new Date(
+        pickupDate.getFullYear(),
+        pickupDate.getMonth(),
+        pickupDate.getDate(),
+        pickupHour,
+        pickupMin,
+        0,
+        0,
+      );
 
-        const returnDateTime = new Date(
-          returnDate.getFullYear(),
-          returnDate.getMonth(),
-          returnDate.getDate(),
-          returnHour,
-          returnMin,
-          0,
-          0,
-        );
+      const returnDateTime = new Date(
+        returnDate.getFullYear(),
+        returnDate.getMonth(),
+        returnDate.getDate(),
+        returnHour,
+        returnMin,
+        0,
+        0,
+      );
 
-        // Calculate total time difference in milliseconds
-        const timeDiffMs = returnDateTime - pickupDateTime;
+      // Calculate total time difference in milliseconds
+      const timeDiffMs = returnDateTime - pickupDateTime;
 
-        // Convert to hours
-        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+      // Convert to hours
+      const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
 
-        // Calculate days: divide by 24 and round up to nearest integer
-        // This ensures any time over a 24-hour period adds another day
-        let days = Math.ceil(timeDiffHours / 24);
+      // Calculate days: divide by 24 and round up to nearest integer
+      // This ensures any time over a 24-hour period adds another day
+      let days = Math.ceil(timeDiffHours / 24);
 
-        // Check if pickup time is outside office hours
-        const pickupOutOfOffice = isOutOfOfficeHours(pickupTime);
-        // Check if return time is outside office hours
-        const returnOutOfOffice = isOutOfOfficeHours(returnTime);
-
-        // If pickup time is outside office hours, add 1 day
-        if (pickupOutOfOffice) {
-          days = days + 1;
-        }
-
-        // If return time is outside office hours, add 1 day
-        if (returnOutOfOffice) {
-          days = days + 1;
-        }
-
-        // Ensure minimum of 1 day
-        return Math.max(1, days);
-      })()
+      // Ensure minimum of 1 day
+      return Math.max(1, days);
+    })()
     : pickupDate && returnDate
       ? Math.max(1, differenceInDays(returnDate, pickupDate))
       : 0;
@@ -486,11 +471,12 @@ const HeroSections = () => {
       locationFee: locationFee,
       outOfOfficeFee: finalOutOfOfficeFee,
       sameStore: sameStore,
+      ageConfirmed: ageConfirmed,
       pickup_time: formattedPickupTime,
       return_time: formattedReturnTime,
       requirements: "",
       protectionPlan: "basic",
-      extras: [],
+      extras: !ageConfirmed ? ["youngDriver"] : [],
     });
 
     // Navigate to cars page with search parameters
@@ -500,6 +486,7 @@ const HeroSections = () => {
       return_location_id: finalReturnId.toString(), // Always include return_location_id
       pickup_date: formattedPickupDate,
       return_date: formattedReturnDate,
+      age_confirmed: ageConfirmed.toString(),
     });
 
     // Include times (always include them, even if default 12:00, for consistency)

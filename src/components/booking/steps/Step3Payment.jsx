@@ -305,6 +305,13 @@ export default function Step3Payment({ onPrev, onNext }) {
         total,
         fromBookingAPI
     } = calculateTotal();
+
+    // Calculate payment breakdown: 30% upfront, 70% after journey
+    const upfrontPaymentPercentage = 30;
+    const remainingPaymentPercentage = 70;
+    const upfrontPayment = (total * upfrontPaymentPercentage) / 100;
+    const remainingPayment = (total * remainingPaymentPercentage) / 100;
+
     const installmentAmount = (total / 3).toFixed(2);
 
     // Prefill form with step 2 data and auto-select payment method
@@ -335,106 +342,64 @@ export default function Step3Payment({ onPrev, onNext }) {
     const handleStripePayment = async () => {
         if (!bookingId) {
             toast.error("Booking ID is missing. Please complete the booking first.");
-            console.error("Booking ID is missing for payment intent creation.");
             return;
         }
 
         setIsProcessingPayment(true);
-        console.log("Initiating Stripe payment for booking ID:", bookingId);
-        console.log("All Step1 data available:", step1Data);
 
         try {
-            // Get the total_amount from booking API response (source of truth)
-            // This matches the backend calculation: subtotal + tax_amount
-            let paymentTotal = null;
+            // Get the full total amount (100%)
+            const fullTotal = parseFloat(bookingData?.total_amount || step1Data.total_amount || total || 0);
 
-            // Priority 1: Use total_amount from booking API response (most accurate)
-            if (step1Data.total_amount) {
-                paymentTotal = parseFloat(step1Data.total_amount);
-                console.log("Using total_amount from booking API response:", paymentTotal);
-            }
-            // Priority 2: Use calculated total from current calculation (includes tax)
-            else if (total && total > 0) {
-                paymentTotal = parseFloat(total);
-                console.log("Using calculated total from Step3 (includes tax):", paymentTotal);
-            }
-            // Priority 3: Use stored total from Step1 (if it includes tax)
-            else if (step1Data.total && step1Data.total > 0) {
-                paymentTotal = parseFloat(step1Data.total);
-                console.log("Using stored total from Step1:", paymentTotal);
-            }
-            // Priority 4: Recalculate from scratch
-            else {
-                const { total: recalculatedTotal } = calculateTotal();
-                paymentTotal = recalculatedTotal;
-                console.log("Using recalculated total:", paymentTotal);
-            }
-
-            // Ensure we have a valid total
-            if (!paymentTotal || paymentTotal <= 0 || isNaN(paymentTotal)) {
-                throw new Error(`Invalid payment total: ${paymentTotal}. Please check your booking details.`);
-            }
-
-            // Convert to cents (Stripe uses cents, so multiply by 100)
+            // Calculate 30% upfront payment
+            const paymentTotal = (fullTotal * upfrontPaymentPercentage) / 100;
             const amountInCents = Math.round(paymentTotal * 100);
 
-            console.log("=== PAYMENT AMOUNT DEBUG ===");
-            console.log("Final Payment Total:", paymentTotal);
-            console.log("Amount in Cents:", amountInCents);
-            console.log("Booking ID:", bookingId);
-            console.log("Total Amount from Booking API:", step1Data.total_amount);
-            console.log("Stored Total from Step1:", step1Data.total);
-            console.log("Component Total:", total);
-            console.log("Car Base Price:", displayCarBasePrice);
-            console.log("Base Rate Total:", baseRateTotal);
-            console.log("Addons Total:", addonsTotal);
-            console.log("===========================");
+            if (!paymentTotal || paymentTotal <= 0) {
+                throw new Error("Invalid payment amount calculation.");
+            }
 
             // Create success and cancel URLs
             const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
             const successUrl = `${baseUrl}/booking/payment/success?booking_id=${bookingId}`;
             const cancelUrl = `${baseUrl}/booking/payment/cancel?booking_id=${bookingId}`;
 
-            // Create payment intent with amount - send in multiple formats to ensure backend receives it
-            // Include all step1 data for backend reference
+            // Create payment intent with the 30% amount 
             const paymentPayload = {
                 booking_id: bookingId,
-                // Amount fields (multiple formats for backend compatibility)
-                amount: paymentTotal, // Primary: amount in dollars
-                total: paymentTotal, // Alternative parameter name
-                total_amount: paymentTotal, // Another alternative (matches API response field)
-                price: paymentTotal, // Another alternative
-                amount_cents: amountInCents, // Amount in cents
-                total_cents: amountInCents, // Total in cents
-                // URLs
+                amount: paymentTotal, // 30%
+                amount_cents: amountInCents, // 30% in cents
+                total: paymentTotal, // 30%
+                total_amount: paymentTotal, // 30%
+                price: paymentTotal, // 30%
+                upfront_payment_amount: paymentTotal, // 30%
+                payment_type: "upfront",
+                payment_part: "upfront",
                 success_url: successUrl,
                 cancel_url: cancelUrl,
-                // Include all step1 data for backend reference
+                // Include full breakdown but OVERRIDE the total fields here too
                 step1_data: {
-                    // Pricing breakdown
-                    subtotal: step1Data.subtotal || (subtotal || 0),
-                    tax_amount: step1Data.taxAmount || (taxAmount || 0),
-                    tax_percentage: step1Data.taxPercentage || (taxPercentage || 10),
-                    base_rental_cost: step1Data.carBasePrice || (displayCarBasePrice || 0),
-                    package_cost: step1Data.baseRateTotal || (baseRateTotal || 0),
-                    addons_cost: step1Data.addonsTotal || (addonsTotal || 0),
-                    // Booking details
-                    pickup_date: step1Data.pickupDate,
-                    dropoff_date: step1Data.dropoffDate,
-                    pickup_location_id: step1Data.pickupLocationId || step1Data.pickup_location_id,
-                    return_location_id: step1Data.dropoffLocationId || step1Data.return_location_id,
-                    protection_plan: step1Data.protectionPlan,
-                    extras: step1Data.extras || [],
-                    // Full step1 data (for complete reference)
-                    full_step1: step1Data,
-                },
+                    ...step1Data,
+                    amount: paymentTotal,
+                    total: paymentTotal,
+                    total_amount: paymentTotal,
+                    price: paymentTotal,
+                    upfront_payment_amount: paymentTotal,
+                    full_booking_total: fullTotal,
+                    remaining_amount_70: fullTotal - paymentTotal,
+                }
             };
 
-            console.log("=== PAYMENT PAYLOAD BEING SENT ===");
-            console.log(JSON.stringify(paymentPayload, null, 2));
-            console.log("Amount field value:", paymentPayload.amount);
-            console.log("Total field value:", paymentPayload.total);
-            console.log("=================================");
+            // LOGGING THE PAYLOAD FOR DEBUGGING
+            console.warn("🚀 DEBUG: PAYMENT PAYLOAD BEING SENT TO BACKEND:");
+            console.table({
+                "Booking ID": paymentPayload.booking_id,
+                "Amount (30%)": paymentPayload.amount,
+                "Full Total (100%)": fullTotal,
+                "Amount in Cents": paymentPayload.amount_cents,
+                "Endpoint": "/payments/create-intent"
+            });
+            console.log("Full Payload Object:", paymentPayload);
 
             const response = await createPaymentIntent.mutateAsync(paymentPayload);
 
@@ -442,22 +407,14 @@ export default function Step3Payment({ onPrev, onNext }) {
             if (response?.data?.checkout_url || response?.checkout_url) {
                 window.location.href = response.data?.checkout_url || response.checkout_url;
             } else if (response?.data?.client_secret) {
-                // If using Stripe Elements, handle client_secret
-                // You can integrate Stripe Elements here if needed
                 console.log("Stripe client secret received:", response.data.client_secret);
-                alert("Payment intent created. Please integrate Stripe Elements for payment processing.");
             } else {
-                // If payment is successful directly
-                console.log("Payment successful:", response);
                 onNext();
             }
         } catch (error) {
-            console.error("Payment processing error in handleStripePayment:", error);
-            const errorMessage = error.message ||
-                error.response?.data?.message ||
-                error.response?.data?.error ||
-                "Failed to process payment. Please try again.";
-            toast.error(`Payment Error: ${errorMessage}\n\nPlease contact support if this issue persists.`);
+            console.error("Payment processing error:", error);
+            const errorMessage = error.message || "Failed to process payment.";
+            toast.error(errorMessage);
         } finally {
             setIsProcessingPayment(false);
         }
@@ -590,12 +547,17 @@ export default function Step3Payment({ onPrev, onNext }) {
                                 <p className="text-sm text-gray-600">
                                     {selectedPackage === "premium" ? "Premium" : selectedPackage === "smart" ? "Smart" : selectedPackage === "lite" ? "Lite" : "Standard"} Rate x {rentalDays} days
                                 </p>
-                                <p className="text-xl font-bold text-gray-900">
-                                    {total.toFixed(2)} €
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Total includes car, package, and addons
-                                </p>
+                                <div>
+                                    <p className="text-xl font-bold text-blue-700">
+                                        {upfrontPayment.toFixed(2)} €
+                                    </p>
+                                    <p className="text-xs text-blue-600 mt-1 font-medium">
+                                        Pay now (30% of {total.toFixed(2)} €)
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Remaining {remainingPayment.toFixed(2)} € after journey
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Summary of Your Rental */}
@@ -695,11 +657,28 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </span>
                                         </div>
                                     )}
-                                    <div className="pt-2 border-t border-gray-200 flex justify-between">
-                                        <span className="text-gray-900 font-bold">Total:</span>
-                                        <span className="text-gray-900 font-bold text-lg">
-                                            {total.toFixed(2)} €
-                                        </span>
+                                    <div className="pt-2 border-t border-gray-200">
+                                        <div className="flex justify-between mb-2">
+                                            <span className="text-gray-900 font-semibold">Total:</span>
+                                            <span className="text-gray-900 font-bold">
+                                                {total.toFixed(2)} €
+                                            </span>
+                                        </div>
+                                        {/* Payment Breakdown: 30% upfront, 70% after journey */}
+                                        <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm font-semibold text-blue-700">Payment Now (30%):</span>
+                                                <span className="text-base font-bold text-blue-700">
+                                                    {upfrontPayment.toFixed(2)} €
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-gray-600">Balance After Journey (70%):</span>
+                                                <span className="text-xs font-medium text-gray-600">
+                                                    {remainingPayment.toFixed(2)} €
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1">
                                         {fromBookingAPI ? (
@@ -742,11 +721,11 @@ export default function Step3Payment({ onPrev, onNext }) {
                             </div> */}
 
                             {/* Loyalty Points */}
-                            <div className="pt-4 border-t border-gray-200">
+                            {/* <div className="pt-4 border-t border-gray-200">
                                 <p className="text-xs text-gray-600">
                                     Your booking gives you {Math.floor(total)} Points OK CLUB
                                 </p>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
 
@@ -1161,7 +1140,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                     </>
                                 ) : (
                                     <>
-                                        CONTINUE
+                                        PAY {upfrontPaymentPercentage}% NOW ({upfrontPayment.toFixed(2)} €) & CONTINUE
                                         <ArrowRight className="w-5 h-5" />
                                     </>
                                 )}
