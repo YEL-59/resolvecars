@@ -69,7 +69,7 @@ export default function Step4Review({ onPrev }) {
             const activePrice = carPrices.find(p => p.is_active !== false) || carPrices[0];
             return activePrice.price_per_day || 0;
         }
-        return car.price || 0;
+        return car.price || car["car price"] || 0;
     }, [car]);
 
     // Calculate package price

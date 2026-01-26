@@ -74,10 +74,10 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                   "Fuel tank full/full",
                   "Refundable",
                 ],
-                price_per_day: car.price || 0,
-                original_price_per_day: car.originalPrice || car.price || 0,
-                discount_percentage: car.discount || 0,
-                has_discount: car.discount > 0,
+                price_per_day: 0, // Set to 0 because car price will be added later
+                original_price_per_day: 0,
+                discount_percentage: 0,
+                has_discount: false,
               },
             ];
 
@@ -89,31 +89,49 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
 
             // Use rental_calculation from API if available (from search API), otherwise calculate
             const rentalCalc = pkg.rental_calculation;
-            let currentPrice, totalPrice;
+            let currentPackagePrice, totalPackagePrice;
 
             if (rentalCalc) {
               // Use API calculated prices
-              currentPrice =
+              currentPackagePrice =
                 rentalCalc.daily_rate ||
                 rentalCalc.base_rental_cost ||
                 plan.pricePerDay ||
                 0;
-              totalPrice =
+              totalPackagePrice =
                 rentalCalc.base_rental_cost ||
-                currentPrice * (rentalCalc.rental_days || rentalDays);
+                currentPackagePrice * (rentalCalc.rental_days || rentalDays);
             } else {
               // Calculate manually
-              currentPrice =
+              currentPackagePrice =
                 plan.pricePerDay ||
                 plan.originalPrice * (1 - plan.discount / 100);
-              totalPrice = currentPrice * rentalDays;
+              totalPackagePrice = currentPackagePrice * rentalDays;
             }
+
+            // 1. Get the base car price (static root price)
+            // Prioritize "car price" (with space) from root or _apiData, then car.price, then 0
+            const rawCarPrice = car["car price"] !== undefined ? car["car price"] :
+              (car._apiData?.["car price"] !== undefined ? car._apiData["car price"] :
+                (car.price || 0));
+            const basePriceValue = parseFloat(rawCarPrice);
+
+            // 2. Get the package price (addon price)
+            const packageAddonPrice = currentPackagePrice;
+
+            // 3. Combine them for the daily rate
+            const combinedDailyPrice = basePriceValue + packageAddonPrice;
+
+            // Calculate total based on days
+            const totalDays = rentalCalc?.rental_days || rentalDays || 1;
+            const combinedTotalAmount = totalPackagePrice + (basePriceValue * totalDays);
 
             return {
               ...plan,
-              currentPrice: currentPrice.toFixed(2),
-              totalPrice: totalPrice.toFixed(0),
-              pricePerDay: currentPrice,
+              currentPrice: combinedDailyPrice.toFixed(2),
+              totalPrice: combinedTotalAmount.toFixed(0),
+              pricePerDay: combinedDailyPrice,
+              packageOnlyPrice: currentPackagePrice,
             };
           });
 
@@ -233,11 +251,12 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
             end_date: dynamicCarPrice.end_date,
           };
         }
-        // Fallback to car.price if available
-        else if (car.price) {
+        // Fallback to car["car price"] or car.price if available
+        else if (car["car price"] || car.price) {
+          const priceValue = car["car price"] || car.price;
           basePriceData = {
-            price_per_day: parseFloat(car.price),
-            display_price: `$${parseFloat(car.price).toFixed(2)}`,
+            price_per_day: parseFloat(priceValue),
+            display_price: `$${parseFloat(priceValue).toFixed(2)}`,
             start_date: null,
             end_date: null,
           };
@@ -634,33 +653,24 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                             </div>
                           )}
                           <div className="space-y-1">
-                            {/* Show original price if it exists and is higher than current price */}
-                            {/* {plan.originalDisplayPrice && (
-                              <p className="text-xs text-gray-500 line-through">
-                                {plan.originalDisplayPrice}
-                              </p>
-                            )} */}
-                            {Number(plan.originalDisplayPrice) > 0 ? (
-                              <p className="text-md text-gray-500 line-through font-medium">
-                                {plan.originalDisplayPrice}
-                              </p>
+                            {/* Combined total price (Car Price + Package Price) */}
+                            {plan.discount > 0 ? (
+                              <>
+                                <p className="text-sm text-gray-500 line-through font-medium">
+                                  ${(parseFloat(plan.originalPrice || 0) + parseFloat(car["car price"] || car.price || 0)).toFixed(2)}
+                                </p>
+                                <p className="text-3xl font-bold text-gray-900">
+                                  ${parseFloat(plan.currentPrice).toFixed(2)}
+                                </p>
+                              </>
                             ) : (
-                              <p className="text-md text-gray-500 font-medium">
-                                {plan.displayPrice}
+                              <p className="text-3xl font-bold text-gray-900">
+                                ${parseFloat(plan.currentPrice).toFixed(2)}
                               </p>
                             )}
-
-                            {/* {!plan.originalDisplayPrice &&
-                              plan.originalPrice &&
-                              plan.originalPrice > plan.pricePerDay && (
-                                <p className="text-xs text-gray-500 line-through">
-                                  ${plan.originalPrice.toFixed(2)}
-                                </p>
-                              )}
-                            <p className="text-lg font-bold text-gray-900">
-                              {plan.displayPrice ||
-                                `$${parseFloat(plan.currentPrice).toFixed(2)}`}
-                            </p> */}
+                            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">
+                              Total per day
+                            </p>
                           </div>
                         </div>
 

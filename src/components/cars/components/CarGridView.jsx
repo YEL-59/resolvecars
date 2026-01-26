@@ -27,14 +27,14 @@ export default function CarGridView({ cars, pickupDate, returnDate }) {
             ? getCarPriceForDate(car, pickupDate)
             : getCarPriceForCurrentDate(car); // Use current date if no search params
 
-        // Use dynamic price if available, otherwise fallback to car.price
+        // Use dynamic price if available, otherwise fallback to car["car price"] or car.price
         const displayPrice = dynamicCarPrice
           ? dynamicCarPrice.price_per_day
-          : car.price;
+          : (car["car price"] || car.price);
 
         const displayPriceFormatted = dynamicCarPrice
-          ? dynamicCarPrice.display_price || `$${displayPrice.toFixed(2)}`
-          : `$${car.price}`;
+          ? dynamicCarPrice.display_price || `$${parseFloat(displayPrice).toFixed(2)}`
+          : `$${parseFloat(car["car price"] || car.price || 0).toFixed(2)}`;
 
         return (
           <div
@@ -123,7 +123,7 @@ export default function CarGridView({ cars, pickupDate, returnDate }) {
                       setShowLoginDialog(true);
                       return;
                     }
-                    
+
                     bookingStorage.setCar(car);
                     router.push(`/cars/${car.id}`);
                   }
@@ -135,7 +135,7 @@ export default function CarGridView({ cars, pickupDate, returnDate }) {
           </div>
         );
       })}
-      
+
       {/* Login Required Dialog */}
       <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
         <DialogContent>

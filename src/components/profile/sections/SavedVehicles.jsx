@@ -50,7 +50,7 @@ const SavedVehicles = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">{car.name}</h3>
-                  <p className="text-sm text-gray-500">${car.price}/day</p>
+                  <p className="text-sm text-gray-500">${car.price || car["car price"]}/day</p>
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-2">

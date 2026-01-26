@@ -47,7 +47,7 @@ const FeaturedSection = () => {
   const featuredVehicles = data?.cars?.slice(0, 3).map((car) => {
     // Get current price for display
     const currentPrice = getCarPriceForCurrentDate(car);
-    const displayPrice = currentPrice?.price_per_day || car.price || 0;
+    const displayPrice = currentPrice?.price_per_day || car.price || car["car price"] || 0;
     const originalPrice = currentPrice?.original_price_per_day || car.originalPrice || null;
 
     // Get first 3 features for tags

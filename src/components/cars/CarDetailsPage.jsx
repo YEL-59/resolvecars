@@ -83,15 +83,15 @@ export default function CarDetailsPage({ carId }) {
       try {
         const pickupDate = new Date(step1Data.pickupDate);
         const dropoffDate = new Date(step1Data.dropoffDate);
-        
+
         // Get times from booking storage, default to "12:00" if not available
         const pickupTime = step1Data.pickup_time || "12:00";
         const returnTime = step1Data.return_time || "12:00";
-        
+
         // Parse time strings
         const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
         const [returnHour, returnMin] = returnTime.split(":").map(Number);
-        
+
         // Create complete datetime objects
         const pickupDateTime = new Date(
           pickupDate.getFullYear(),
@@ -102,7 +102,7 @@ export default function CarDetailsPage({ carId }) {
           0,
           0,
         );
-        
+
         const returnDateTime = new Date(
           dropoffDate.getFullYear(),
           dropoffDate.getMonth(),
@@ -112,17 +112,17 @@ export default function CarDetailsPage({ carId }) {
           0,
           0,
         );
-        
+
         // Calculate total time difference in milliseconds
         const timeDiffMs = returnDateTime - pickupDateTime;
-        
+
         // Convert to hours
         const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
-        
+
         // Calculate days: divide by 24 and round up to nearest integer
         // This ensures any time over a 24-hour period adds another day
         const diffDays = Math.ceil(timeDiffHours / 24);
-        
+
         return diffDays > 0 ? diffDays : 1;
       } catch {
         return 1;
@@ -211,7 +211,7 @@ export default function CarDetailsPage({ carId }) {
 
   // Calculate total for each protection plan
   const calculateTotalForPlan = (plan) => {
-    const carDailyRate = parseInt(car.price || 0);
+    const carDailyRate = parseInt(car.price || car["car price"] || 0);
     const protectionTotal = plan.dailyPrice * rentalDays;
     const baseTotal = carDailyRate * rentalDays;
     const subtotal = baseTotal + protectionTotal;
@@ -382,62 +382,60 @@ export default function CarDetailsPage({ carId }) {
                   Rental Period: {rentalDays} {rentalDays === 1 ? "day" : "days"}
                 </p>
 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   {protectionPlans.map((plan) => {
-                     const totals = calculateTotalForPlan(plan);
-                     return (
-                       <div key={plan.id} className={`rounded-lg border-2 p-5 transition-all hover:shadow-lg ${
-                         plan.id === "basic" ? "border-gray-200 bg-gray-50" :
-                         plan.id === "standard" ? "border-blue-200 bg-blue-50" :
-                         "border-purple-200 bg-purple-50"
-                       }`}>
-                         <div className="mb-4">
-                           <div className="flex items-center justify-between mb-2">
-                             <h3 className="text-lg font-bold">{plan.name}</h3>
-                             {plan.id === "basic" && (
-                               <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">Included</span>
-                             )}
-                           </div>
-                           <p className="text-sm text-gray-600 mb-3">{plan.description}</p>
-                           
-                           {/* Price breakdown */}
-                           <div className="space-y-2 mb-4">
-                             <div className="flex justify-between text-sm">
-                               <span className="text-gray-600">Base rental ({rentalDays} {rentalDays === 1 ? "day" : "days"})</span>
-                               <span className="font-medium">${totals.base.toFixed(2)}</span>
-                             </div>
-                             <div className="flex justify-between text-sm">
-                               <span className="text-gray-600">Protection ({plan.id === "basic" ? "Included" : `$${plan.dailyPrice}/day`})</span>
-                               <span className="font-medium">{plan.id === "basic" ? "Free" : `$${totals.protection.toFixed(2)}`}</span>
-                             </div>
-                             <div className="flex justify-between text-sm">
-                               <span className="text-gray-600">Tax (8%)</span>
-                               <span className="font-medium">${totals.tax.toFixed(2)}</span>
-                             </div>
-                             <div className="border-t pt-2 mt-2">
-                               <div className="flex justify-between items-center">
-                                 <span className="font-bold text-lg">Total</span>
-                                 <span className="font-bold text-xl text-red-600">${totals.total.toFixed(2)}</span>
-                               </div>
-                             </div>
-                           </div>
-                         </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {protectionPlans.map((plan) => {
+                    const totals = calculateTotalForPlan(plan);
+                    return (
+                      <div key={plan.id} className={`rounded-lg border-2 p-5 transition-all hover:shadow-lg ${plan.id === "basic" ? "border-gray-200 bg-gray-50" :
+                          plan.id === "standard" ? "border-blue-200 bg-blue-50" :
+                            "border-purple-200 bg-purple-50"
+                        }`}>
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-lg font-bold">{plan.name}</h3>
+                            {plan.id === "basic" && (
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">Included</span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">{plan.description}</p>
 
-                         {/* Continue/Book Button */}
-                         <Button
-                           onClick={() => handleBookNow(plan.id)}
-                           className={`w-full ${
-                             plan.id === "basic" ? "bg-gray-800 hover:bg-gray-900" :
-                             plan.id === "standard" ? "bg-blue-600 hover:bg-blue-700" :
-                             "bg-purple-600 hover:bg-purple-700"
-                           } text-white`}
-                         >
-                           Continue with {plan.name}
-                         </Button>
-                       </div>
-                     );
-                   })}
-                 </div>
+                          {/* Price breakdown */}
+                          <div className="space-y-2 mb-4">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Base rental ({rentalDays} {rentalDays === 1 ? "day" : "days"})</span>
+                              <span className="font-medium">${totals.base.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Protection ({plan.id === "basic" ? "Included" : `$${plan.dailyPrice}/day`})</span>
+                              <span className="font-medium">{plan.id === "basic" ? "Free" : `$${totals.protection.toFixed(2)}`}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Tax (8%)</span>
+                              <span className="font-medium">${totals.tax.toFixed(2)}</span>
+                            </div>
+                            <div className="border-t pt-2 mt-2">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-lg">Total</span>
+                                <span className="font-bold text-xl text-red-600">${totals.total.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Continue/Book Button */}
+                        <Button
+                          onClick={() => handleBookNow(plan.id)}
+                          className={`w-full ${plan.id === "basic" ? "bg-gray-800 hover:bg-gray-900" :
+                              plan.id === "standard" ? "bg-blue-600 hover:bg-blue-700" :
+                                "bg-purple-600 hover:bg-purple-700"
+                            } text-white`}
+                        >
+                          Continue with {plan.name}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
 
               </div>
 

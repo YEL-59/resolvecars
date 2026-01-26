@@ -444,83 +444,35 @@ export default function Step1Rental({ onNext }) {
     const car = selectedCar;
     if (!car) return null;
 
-    // First, check current_price (directly on car object from API)
+    // Prioritize "car price" field from user request
+    const rawCarPrice = car["car price"] !== undefined ? car["car price"] :
+      (car._apiData?.["car price"] !== undefined ? car._apiData["car price"] :
+        (car.price || 0));
+
+    // If we have a price, return it with the CURRENT selection's rental days
+    if (rawCarPrice !== undefined) {
+      const priceValue = parseFloat(rawCarPrice);
+      return {
+        price_per_day: priceValue,
+        display_price: `${priceValue.toFixed(2)} €`,
+        rental_days: rentalDays, // Use user's selected days
+        total_price: priceValue * rentalDays
+      };
+    }
+
+    // Fallback: check current_price (directly on car object from API)
     const currentPrice = car._apiData?.current_price || car.current_price;
     if (currentPrice && currentPrice.price_per_day) {
-      // Calculate rental days for total
-      let rentalDays = 0;
-      let totalPrice = 0;
-      if (currentPrice.start_date && currentPrice.end_date) {
-        const startDate = new Date(currentPrice.start_date);
-        const endDate = new Date(currentPrice.end_date);
-        const diffTime = Math.abs(endDate - startDate);
-        rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        totalPrice = rentalDays * parseFloat(currentPrice.price_per_day);
-      }
       return {
         price_per_day: parseFloat(currentPrice.price_per_day) || 0,
-        display_price: currentPrice.display_price || `$${parseFloat(currentPrice.price_per_day || 0).toFixed(2)}`,
-        start_date: currentPrice.start_date,
-        end_date: currentPrice.end_date,
+        display_price: currentPrice.display_price || `${parseFloat(currentPrice.price_per_day || 0).toFixed(2)} €`,
         rental_days: rentalDays,
-        total_price: totalPrice,
-      };
-    }
-
-    // Second, check car_prices array (directly on car object from API)
-    const directCarPrices = car._apiData?.car_prices || car.car_prices;
-    if (directCarPrices && Array.isArray(directCarPrices) && directCarPrices.length > 0) {
-      const activePrice =
-        directCarPrices.find(p => p.is_currently_active) ||
-        directCarPrices.find(p => p.is_active !== false) ||
-        directCarPrices[0];
-      // Calculate rental days for total
-      let rentalDays = 0;
-      let totalPrice = 0;
-      if (activePrice.start_date && activePrice.end_date) {
-        const startDate = new Date(activePrice.start_date);
-        const endDate = new Date(activePrice.end_date);
-        const diffTime = Math.abs(endDate - startDate);
-        rentalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        totalPrice = rentalDays * parseFloat(activePrice.price_per_day);
-      }
-      return {
-        price_per_day: parseFloat(activePrice.price_per_day) || 0,
-        display_price: activePrice.display_price || `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
-        start_date: activePrice.start_date,
-        end_date: activePrice.end_date,
-        date_range: activePrice.date_range,
-        rental_days: rentalDays,
-        total_price: totalPrice,
-      };
-    }
-
-    // Third, try model.car_prices (fallback)
-    const modelCarPrices = car._apiData?.model?.car_prices || car.model?.car_prices;
-    if (modelCarPrices && Array.isArray(modelCarPrices) && modelCarPrices.length > 0) {
-      const activePrice = modelCarPrices.find(p => p.is_active !== false) || modelCarPrices[0];
-      return {
-        price_per_day: parseFloat(activePrice.price_per_day) || 0,
-        display_price: activePrice.display_price || `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
-        start_date: activePrice.start_date,
-        end_date: activePrice.end_date,
-        rental_days: 0,
-        total_price: 0,
-      };
-    }
-
-    // Fallback to car.price if available
-    if (car.price) {
-      return {
-        price_per_day: parseFloat(car.price),
-        display_price: `$${parseFloat(car.price).toFixed(2)}`,
-        rental_days: 0,
-        total_price: 0,
+        total_price: (parseFloat(currentPrice.price_per_day) || 0) * rentalDays,
       };
     }
 
     return null;
-  }, [selectedCar]);
+  }, [selectedCar, rentalDays]);
 
   // Car base price total = calculated from car_prices (days × price_per_day)
   const carBasePriceTotal = useMemo(() => {
@@ -1319,9 +1271,9 @@ export default function Step1Rental({ onNext }) {
                 </div>
               )}
               <div className="space-y-2 mb-4">
-                <p className="text-sm text-gray-600">
+                {/* <p className="text-sm text-gray-600">
                   {currentPackageType === "premium" ? "Premium" : currentPackageType === "smart" ? "Smart" : currentPackageType === "lite" ? "Lite" : "Standard"} Rate x {rentalDays} days
-                </p>
+                </p> */}
                 <div>
                   <p className="text-xl font-bold text-blue-700">
                     {upfrontPayment.toFixed(2)} €
@@ -1340,19 +1292,17 @@ export default function Step1Rental({ onNext }) {
                   SUMMARY OF YOUR RENTAL
                 </h4>
                 <div className="space-y-2 text-sm">
-                  {/* Car Base Price - from car_prices (days × price_per_day) */}
+                  {/* Car Base Price - (days × price_per_day) */}
                   {carBasePrice && (
                     <div className="flex justify-between">
                       <span className="text-gray-700">
                         Car Rental
-                        {carBasePrice.rental_days > 0 && (
-                          <span className="text-xs text-gray-500 ml-1">
-                            ({carBasePrice.rental_days} days × {carBasePrice.price_per_day.toFixed(2)} €)
-                          </span>
-                        )}
+                        <span className="text-xs text-gray-500 ml-1">
+                          ({rentalDays} days × {carBasePrice.price_per_day.toFixed(2)} €)
+                        </span>
                       </span>
                       <span className="text-gray-900 font-medium">
-                        {carBasePriceTotal.toFixed(2)} €
+                        {(carBasePrice.price_per_day * rentalDays).toFixed(2)} €
                       </span>
                     </div>
                   )}
