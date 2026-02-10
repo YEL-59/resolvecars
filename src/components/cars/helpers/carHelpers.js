@@ -154,6 +154,9 @@ export const transformPackageToPlan = (pkg, index) => {
     hasDiscount: pkg.has_discount || false,
     displayPrice: pkg.display_price,
     originalDisplayPrice: pkg.original_display_price,
+    excess: pkg.excess || pkg._original?.excess,
+    deposit: pkg.deposit || pkg._original?.deposit,
+    excess_description: pkg.excess_description || pkg._original?.excess_description,
   };
 };
 

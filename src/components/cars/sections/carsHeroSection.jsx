@@ -13,17 +13,23 @@ import {
   CalendarIcon,
   MapPin,
   Clock,
+  Car,
+  Users,
+  ArrowBigLeft,
+  ArrowRight,
   X,
   Search,
   RotateCcw,
 } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { bookingStorage } from "@/lib/bookingStorage";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { useLocations } from "@/hooks/locations.hook";
+import { DateRange } from "react-date-range";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+import { useLocations, useOneWayRoutes } from "@/hooks/locations.hook";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 // Time Selector Component
@@ -92,11 +98,13 @@ const SearchableLocationInput = ({
   onLocationSelect,
   placeholder = "City, airport...",
   label,
+  inputRef: externalInputRef
 }) => {
   const [searchQuery, setSearchQuery] = useState(value || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
-  const inputRef = useRef(null);
+  const internalInputRef = useRef(null);
+  const inputRef = externalInputRef || internalInputRef;
   const dropdownRef = useRef(null);
 
   // Fetch locations from API
@@ -259,8 +267,15 @@ const CarsHeroSection = () => {
   const router = useRouter();
   const [pickupDate, setPickupDate] = useState(null);
   const [returnDate, setReturnDate] = useState(null);
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
+      key: 'selection'
+    }
+  ]);
   const [pickupTime, setPickupTime] = useState("13:00");
-  const [returnTime, setReturnTime] = useState("13:30");
+  const [returnTime, setReturnTime] = useState("14:00");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [activeTrigger, setActiveTrigger] = useState(null); // Track which button was clicked
   const [isMobile, setIsMobile] = useState(false);
@@ -272,7 +287,14 @@ const CarsHeroSection = () => {
   const [pickupLocationPrice, setPickupLocationPrice] = useState(0);
   const [returnLocationPrice, setReturnLocationPrice] = useState(0);
   const [sameStore, setSameStore] = useState(true);
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(true);
+  const returnLocationInputRef = useRef(null);
+
+  // Fetch one-way route price
+  const { data: routeData } = useOneWayRoutes({
+    from_location_id: pickupLocationId,
+    to_location_id: sameStore ? pickupLocationId : returnLocationId
+  });
 
   // Office hours: 8:00 to 21:00 (8 AM to 9 PM)
   const OFFICE_START_HOUR = 8;
@@ -286,20 +308,54 @@ const CarsHeroSection = () => {
     return hour < OFFICE_START_HOUR || hour >= OFFICE_END_HOUR;
   };
 
-  // Load existing booking data only if URL has no search params
-  // This prevents reloading cleared data when user navigates back
+  // Load existing booking data from URL params or storage
   useEffect(() => {
-    // Check if we're on /cars page and if URL has search params
     const urlParams = new URLSearchParams(window.location.search);
     const hasUrlSearchParams =
       urlParams.has("pickup_location_id") ||
       urlParams.has("pickup_date") ||
       urlParams.has("return_date");
 
-    // Only load from storage if URL has no search params
-    // If URL has params, they will be loaded by CarsCardSection component
-    if (!hasUrlSearchParams) {
-      const step1 = bookingStorage.getStep("step1") || {};
+    const step1 = bookingStorage.getStep("step1") || {};
+
+    // Prioritize URL parameters, otherwise use storage
+    if (hasUrlSearchParams) {
+      try {
+        const pLocId = urlParams.get("pickup_location_id");
+        const rLocId = urlParams.get("return_location_id");
+        const pDateStr = urlParams.get("pickup_date");
+        const rDateStr = urlParams.get("return_date");
+        const pTimeStr = urlParams.get("pickup_time") || "13:00";
+        const rTimeStr = urlParams.get("return_time") || "14:00";
+        const ageConf = urlParams.get("age_confirmed") === "true";
+
+        if (pLocId) setPickupLocationId(parseInt(pLocId));
+        if (rLocId) setReturnLocationId(parseInt(rLocId));
+        if (pDateStr) setPickupDate(new Date(pDateStr));
+        if (rDateStr) setReturnDate(new Date(rDateStr));
+        if (pTimeStr) setPickupTime(pTimeStr);
+        if (rTimeStr) setReturnTime(rTimeStr);
+        setAgeConfirmed(ageConf);
+
+        if (pLocId && rLocId) {
+          setSameStore(pLocId === rLocId);
+        }
+
+        // Update date range for the calendar component
+        if (pDateStr && rDateStr) {
+          setDateRange([
+            {
+              startDate: new Date(pDateStr),
+              endDate: new Date(rDateStr),
+              key: 'selection'
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error parsing URL search params:", err);
+      }
+    } else {
+      // Load from storage if no URL params
       try {
         if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
         if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
@@ -310,90 +366,75 @@ const CarsHeroSection = () => {
         }
         if (step1.dropoffLocationId)
           setReturnLocationId(step1.dropoffLocationId);
-        // Load location prices
         if (step1.pickupLocationPrice)
           setPickupLocationPrice(step1.pickupLocationPrice);
         if (step1.returnLocationPrice)
           setReturnLocationPrice(step1.returnLocationPrice);
-        // Load sameStore flag
         if (typeof step1.sameStore === "boolean") {
           setSameStore(step1.sameStore);
-        } else if (step1.pickupLocation && step1.dropoffLocation) {
-          setSameStore(step1.pickupLocation === step1.dropoffLocation);
         }
-        // Load ageConfirmed flag
         if (typeof step1.ageConfirmed === "boolean") {
           setAgeConfirmed(step1.ageConfirmed);
         }
-      } catch { }
+        if (step1.pickup_time) setPickupTime(step1.pickup_time);
+        if (step1.return_time) setReturnTime(step1.return_time);
+
+        // Update date range for the calendar
+        if (step1.pickupDate && step1.dropoffDate) {
+          setDateRange([
+            {
+              startDate: new Date(step1.pickupDate),
+              endDate: new Date(step1.dropoffDate),
+              key: 'selection'
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error loading step1 from storage:", err);
+      }
     }
   }, []);
 
   // Calculate period in days based on strict 24-hour periods
-  // Logic: After each 24-hour period, if there's any additional time (even 1 minute), charge an extra day
-  // Example: Pickup 20/1/2026 11:00 AM, Return 22/1/2026 11:00 AM = 2 days (exactly 48 hours)
-  // Example: Pickup 20/1/2026 11:00 AM, Return 22/1/2026 11:01 AM = 3 days (48 hours + 1 minute)
-  const periodDays =
-    pickupDate && returnDate && pickupTime && returnTime
-      ? (() => {
-        // Create complete datetime objects for pickup and return
-        const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
-        const [returnHour, returnMin] = returnTime.split(":").map(Number);
+  const periodDays = pickupDate && returnDate && pickupTime && returnTime
+    ? (() => {
+      const [pickupHour, pickupMin] = pickupTime.split(":").map(Number);
+      const [returnHour, returnMin] = returnTime.split(":").map(Number);
 
-        // Create fresh datetime objects to avoid timezone issues
-        // Extract year, month, day from the date objects
-        const pickupDateTime = new Date(
-          pickupDate.getFullYear(),
-          pickupDate.getMonth(),
-          pickupDate.getDate(),
-          pickupHour,
-          pickupMin,
-          0,
-          0,
-        );
+      const pickupDateTime = new Date(
+        pickupDate.getFullYear(),
+        pickupDate.getMonth(),
+        pickupDate.getDate(),
+        pickupHour,
+        pickupMin,
+        0,
+        0,
+      );
 
-        const returnDateTime = new Date(
-          returnDate.getFullYear(),
-          returnDate.getMonth(),
-          returnDate.getDate(),
-          returnHour,
-          returnMin,
-          0,
-          0,
-        );
+      const returnDateTime = new Date(
+        returnDate.getFullYear(),
+        returnDate.getMonth(),
+        returnDate.getDate(),
+        returnHour,
+        returnMin,
+        0,
+        0,
+      );
 
-        // Calculate total time difference in milliseconds
-        const timeDiffMs = returnDateTime - pickupDateTime;
-
-        // Convert to hours
-        const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
-
-        // Calculate days: divide by 24 and round up to nearest integer
-        // This ensures any time over a 24-hour period adds another day
-        let days = Math.ceil(timeDiffHours / 24);
-
-        // Debug logging
-        console.log("=== PERIOD CALCULATION DEBUG ===");
-        console.log("Pickup DateTime:", pickupDateTime.toString());
-        console.log("Return DateTime:", returnDateTime.toString());
-        console.log("Time Diff (ms):", timeDiffMs);
-        console.log("Time Diff (hours):", timeDiffHours);
-        console.log("Calculated Days (Math.ceil):", days);
-        console.log("===============================");
-
-        // Ensure minimum of 1 day
-        return Math.max(1, days);
-      })()
-      : pickupDate && returnDate
-        ? Math.max(1, differenceInDays(returnDate, pickupDate))
-        : 0;
+      const timeDiffMs = returnDateTime - pickupDateTime;
+      const timeDiffHours = timeDiffMs / (1000 * 60 * 60);
+      let days = Math.ceil(timeDiffHours / 24);
+      return Math.max(1, days);
+    })()
+    : pickupDate && returnDate
+      ? Math.max(1, differenceInDays(returnDate, pickupDate))
+      : 0;
 
   // Calculate out-of-office fee (40 if any time is outside office hours)
-  const outOfOfficeFee =
-    (pickupTime && isOutOfOfficeHours(pickupTime)) ||
-      (returnTime && isOutOfOfficeHours(returnTime))
-      ? OUT_OF_OFFICE_FEE
-      : 0;
+  const outOfOfficeFee = (pickupTime && isOutOfOfficeHours(pickupTime)) ||
+    (returnTime && isOutOfOfficeHours(returnTime))
+    ? OUT_OF_OFFICE_FEE
+    : 0;
 
   // Format date as DD/MM/YYYY
   const formatDate = (date) => {
@@ -408,11 +449,17 @@ const CarsHeroSection = () => {
   };
 
   const handleClear = () => {
-    // Clear all form fields
     setPickupDate(null);
     setReturnDate(null);
+    setDateRange([
+      {
+        startDate: new Date(),
+        endDate: new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
+        key: 'selection'
+      }
+    ]);
     setPickupTime("13:00");
-    setReturnTime("13:30");
+    setReturnTime("14:00");
     setPickupLocation("");
     setReturnLocation("");
     setPickupLocationId(null);
@@ -420,13 +467,11 @@ const CarsHeroSection = () => {
     setPickupLocationPrice(0);
     setReturnLocationPrice(0);
     setSameStore(true);
-    setAgeConfirmed(false);
+    setAgeConfirmed(true);
 
-    // Clear UI state
     setCalendarOpen(false);
     setActiveTrigger(null);
 
-    // Clear booking storage completely for step1
     bookingStorage.updateStep("step1", {
       pickupDate: "",
       dropoffDate: "",
@@ -436,7 +481,6 @@ const CarsHeroSection = () => {
       dropoffLocation: "",
       dropoffLocationId: null,
       returnLocationPrice: 0,
-      locationFee: 0,
       pickup_time: "",
       return_time: "",
       requirements: "",
@@ -444,12 +488,10 @@ const CarsHeroSection = () => {
       extras: [],
     });
 
-    // Navigate to cars page without search params (clears URL parameters)
     router.push("/cars");
   };
 
   const handleSearch = () => {
-    // Validate required fields with user feedback
     if (!pickupDate || !returnDate || !pickupLocationId) {
       const missingFields = [];
       if (!pickupDate) missingFields.push("Pick-up date");
@@ -464,31 +506,13 @@ const CarsHeroSection = () => {
       return;
     }
 
-    // Determine final location IDs
     const finalPickupId = pickupLocationId;
     const finalReturnId = sameStore ? pickupLocationId : returnLocationId;
-
-    // Format dates for API (Y-m-d format)
     const formattedPickupDate = formatDateForAPI(pickupDate);
     const formattedReturnDate = formatDateForAPI(returnDate);
-
-    // Format times (H:i format, default to 12:00 if not set)
     const formattedPickupTime = pickupTime || "12:00";
     const formattedReturnTime = returnTime || "12:00";
 
-    console.log("=== SEARCH API CALL ===");
-    console.log("Search Parameters:", {
-      pickup_location_id: finalPickupId,
-      return_location_id: finalReturnId,
-      pickup_date: formattedPickupDate,
-      pickup_time: formattedPickupTime,
-      return_date: formattedReturnDate,
-      return_time: formattedReturnTime,
-    });
-    console.log("API Endpoint: /api/v1/cars/search");
-    console.log("======================");
-
-    // Store in booking storage
     const toISO = (dateObj, timeStr) => {
       try {
         const d = new Date(dateObj);
@@ -502,23 +526,18 @@ const CarsHeroSection = () => {
       }
     };
 
-    // Calculate location fee: same location = 0 (no charge), different = sum of both prices
     const finalPickupPrice = pickupLocationPrice || 0;
     const finalReturnPrice = returnLocationPrice || 0;
-    const locationFee = sameStore ? 0 : finalPickupPrice + finalReturnPrice;
 
-    // Calculate out-of-office fee (40 if any time is outside office hours 8:00-21:00)
+    // Default logic: same location = 0, different = sum of both prices
+    let locationFee = sameStore ? 0 : (finalPickupPrice + finalReturnPrice);
+
+    // If we have a specific one-way route price, use it instead for different locations
+    if (!sameStore && routeData && routeData.length > 0) {
+      const routePrice = parseFloat(routeData[0].price || 0);
+      locationFee = routePrice;
+    }
     const finalOutOfOfficeFee = outOfOfficeFee || 0;
-
-    console.log("CarsHeroSection: Storing location fee and out-of-office fee data:", {
-      pickupLocationPrice: finalPickupPrice,
-      returnLocationPrice: finalReturnPrice,
-      locationFee: locationFee,
-      sameStore: sameStore,
-      outOfOfficeFee: finalOutOfOfficeFee,
-      pickupTime: formattedPickupTime,
-      returnTime: formattedReturnTime,
-    });
 
     bookingStorage.updateStep("step1", {
       pickupDate: toISO(pickupDate, pickupTime),
@@ -540,24 +559,17 @@ const CarsHeroSection = () => {
       extras: !ageConfirmed ? ["youngDriver"] : [],
     });
 
-    // Navigate to cars page with search parameters
-    // The CarsCardSection component will automatically call the search API via useSearchCars hook
     const searchParams = new URLSearchParams({
       pickup_location_id: finalPickupId.toString(),
-      return_location_id: finalReturnId.toString(), // Always include return_location_id
+      return_location_id: finalReturnId.toString(),
       pickup_date: formattedPickupDate,
       return_date: formattedReturnDate,
       age_confirmed: ageConfirmed.toString(),
     });
 
-    // Include times (always include them, even if default 12:00, for consistency)
     searchParams.append("pickup_time", formattedPickupTime);
     searchParams.append("return_time", formattedReturnTime);
 
-    console.log(
-      "Navigating to /cars with search params:",
-      searchParams.toString(),
-    );
     router.push(`/cars?${searchParams.toString()}`);
   };
 
@@ -580,52 +592,170 @@ const CarsHeroSection = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Add custom styles for react-datepicker
+  // Add custom styles for premium calendar view
   useEffect(() => {
-    const style = document.createElement("style");
+    const style = document.createElement('style');
     style.textContent = `
-      .react-datepicker {
+      .rdrCalendarWrapper {
         font-family: inherit !important;
-        border: none !important;
-        border-radius: 0.5rem !important;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
-      }
-      .react-datepicker__header {
         background-color: white !important;
-        border-bottom: 1px solid #e5e7eb !important;
-        border-radius: 0.5rem 0.5rem 0 0 !important;
-        padding-top: 0.75rem !important;
+        border-radius: 1.25rem !important;
+        padding: 0.75rem !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        width: 80vh !important;
       }
-      .react-datepicker__month-container {
+      .rdrMonth {
+        width: 100% !important;
+        padding: 0 0.75rem 0.75rem 0.75rem !important;
+      }
+      .rdrMonthName {
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        padding: 1.5rem 0 1rem 0 !important;
+        text-align: center !important;
+      }
+      .rdrWeekDays {
         padding: 0 !important;
       }
-      .react-datepicker__day--selected,
-      .react-datepicker__day--in-selecting-range,
-      .react-datepicker__day--in-range {
-        background-color: rgb(37 99 235) !important;
-        color: white !important;
-        border-radius: 0.375rem !important;
+      .rdrWeekDay {
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.7rem !important;
+        padding: 0.5rem 0 !important;
       }
-      .react-datepicker__day--in-selecting-range:not(.react-datepicker__day--in-range) {
-        background-color: rgb(191 219 254) !important;
-        color: rgb(30 58 138) !important;
+      .rdrDays {
+        gap: 0 !important;
       }
-      .react-datepicker__day--range-start,
-      .react-datepicker__day--range-end {
-        background-color: rgb(37 99 235) !important;
-        color: white !important;
+      .rdrDay {
+        height: 3.2rem !important;
+        background: transparent !important;
       }
-      .react-datepicker__day:hover {
-        background-color: rgb(219 234 254) !important;
-        border-radius: 0.375rem !important;
+      .rdrDayNumber {
+        font-weight: 600 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 5 !important;
       }
-      .react-datepicker__day--keyboard-selected {
-        background-color: rgb(219 234 254) !important;
-        color: inherit !important;
+      .rdrDayNumber span {
+        font-size: 0.9rem !important;
+        color: #334155 !important;
+        transition: color 0.1s ease !important;
       }
-      .react-datepicker__day--disabled {
-        color: #d1d5db !important;
-        cursor: not-allowed !important;
+      
+      /* Reset default backgrounds */
+      .rdrSelected, .rdrInRange, .rdrStartEdge, .rdrEndEdge {
+        top: 4px !important;
+        bottom: 4px !important;
+        background: none !important;
+      }
+      
+      /* Start & End Edge Shapes (Pills) */
+      .rdrStartEdge {
+        background: #2563eb !important;
+        border-top-left-radius: 2rem !important;
+        border-bottom-left-radius: 2rem !important;
+        left: 4px !important;
+        right: 0 !important;
+      }
+      
+      .rdrEndEdge {
+        background: #2563eb !important;
+        border-radius: 1rem !important;
+      }
+      
+      /* Single Day Selection (Perfect Circle) */
+      .rdrStartEdge.rdrEndEdge {
+        left: 4px !important;
+        right: 4px !important;
+        border-radius: 2rem !important;
+      }
+      
+      /* Range Highlight */
+      .rdrInRange {
+        background: #8f8d8dff !important;
+        top: 4px !important;
+        bottom: 4px !important;
+        left: 0 !important;
+        right: 0 !important;
+      }
+      
+      /* Hover & Preview */
+      .rdrDayInPreview {
+        background: rgba(37, 99, 235, 0.08) !important;
+        border: none !important;
+        top: 4px !important;
+        bottom: 4px !important;
+        border-radius: 2rem !important;
+      }
+      
+      .rdrDayHovered {
+        background: #f8fafc !important;
+        border-radius: 2rem !important;
+      }
+
+      /* Force Text Visibility */
+      .rdrDaySelected .rdrDayNumber span,
+      .rdrStartEdge .rdrDayNumber span,
+      .rdrEndEdge .rdrDayNumber span {
+        color: #ffffff !important;
+      }
+      
+      .rdrInRange .rdrDayNumber span {
+        color: #1e40af !important;
+      }
+
+      .rdrDayPassive .rdrDayNumber span {
+        color: #cbd5e1 !important;
+      }
+
+      .rdrDayDisabled {
+        background-color: transparent !important;
+      }
+      .rdrDayDisabled .rdrDayNumber span {
+        color: #f1f5f9 !important;
+      }
+
+      /* Navigation Styling */
+      .rdrNextPrevButton {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 0.5rem !important;
+        margin: 0 0.5rem !important;
+      }
+      .rdrNextPrevButton:hover {
+        background: #f1f5f9 !important;
+      }
+
+      /* Dropdowns */
+      .rdrMonthAndYearPickers select {
+        color: #1e293b !important;
+        font-weight: 700 !important;
+        border-radius: 0.5rem !important;
+        padding: 0.5rem 1.5rem 0.5rem 0.5rem !important;
+      }
+      
+      /* Hide "static ranges" */
+      .rdrStaticRanges {
+        display: none !important;
+      }
+      
+      /* Mobile adjustments */
+      @media (max-width: 640px) {
+        .rdrMonth {
+           width: 100% !important;
+           padding: 0 0.25rem 0.25rem 0.25rem !important;
+        }
+        .rdrCalendarWrapper {
+          width: 100% !important;
+          padding: 0.5rem !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -667,6 +797,19 @@ const CarsHeroSection = () => {
                   if (location) {
                     setPickupLocationId(location.id);
                     setPickupLocationPrice(location.price || 0);
+
+                    // Auto-focus return location if sameStore is unchecked
+                    if (!sameStore) {
+                      setTimeout(() => {
+                        if (returnLocationInputRef.current) {
+                          returnLocationInputRef.current.focus();
+                          returnLocationInputRef.current.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                          });
+                        }
+                      }, 150);
+                    }
                   } else {
                     setPickupLocationId(null);
                     setPickupLocationPrice(0);
@@ -695,6 +838,7 @@ const CarsHeroSection = () => {
                     }
                   }}
                   placeholder="City, airport..."
+                  inputRef={returnLocationInputRef}
                 />
               </div>
             )}
@@ -704,20 +848,15 @@ const CarsHeroSection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Pick-up Date & Time Group */}
             <div className="border-2 border-blue-400 rounded-lg p-3 bg-white/10">
-              <Popover
-                open={calendarOpen && activeTrigger === "pickup"}
-                onOpenChange={(open) => {
-                  setCalendarOpen(open);
-                  if (open) setActiveTrigger("pickup");
-                  else setActiveTrigger(null);
-                }}
-              >
+              <Popover open={calendarOpen && activeTrigger === "pickup"} onOpenChange={(open) => {
+                setCalendarOpen(open);
+                if (open) setActiveTrigger("pickup");
+                else setActiveTrigger(null);
+              }}>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {/* Pick-up Date */}
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-100 block">
-                      Pick-up date
-                    </label>
+                    <label className="text-xs text-gray-100 block">Pick-up date</label>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -727,7 +866,7 @@ const CarsHeroSection = () => {
                         }}
                         className={cn(
                           "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
-                          !pickupDate && "text-gray-400",
+                          !pickupDate && "text-gray-400"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-5 w-5 text-gray-400" />
@@ -746,7 +885,7 @@ const CarsHeroSection = () => {
                   />
                 </div>
                 <PopoverContent
-                  className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none"
+                  className="w-auto p-0 z-50 max-w-[150vw] sm:max-w-none shadow-2xl border-0 overflow-hidden"
                   align="start"
                   sideOffset={8}
                   side="bottom"
@@ -754,25 +893,21 @@ const CarsHeroSection = () => {
                 >
                   <div className="overflow-x-auto p-0 m-0">
                     {mounted && (
-                      <DatePicker
-                        selected={pickupDate}
-                        onChange={(date) => {
-                          setPickupDate(date);
-                          // If pickup date is after return date, reset return date
-                          if (date && returnDate && date >= returnDate) {
-                            // Set return date to next day after pickup
-                            const nextDay = new Date(date);
-                            nextDay.setDate(nextDay.getDate() + 1);
-                            setReturnDate(nextDay);
-                          }
+                      <DateRange
+                        editableDateInputs={true}
+                        onChange={(item) => {
+                          const selection = item.selection;
+                          setDateRange([selection]);
+                          setPickupDate(selection.startDate);
+                          setReturnDate(selection.endDate);
                         }}
-                        selectsStart
-                        startDate={pickupDate}
-                        endDate={returnDate}
+                        moveRangeOnFirstSelection={false}
+                        ranges={dateRange}
+                        months={isMobile ? 1 : 2}
+                        direction="horizontal"
                         minDate={new Date()}
-                        monthsShown={isMobile ? 1 : 2}
-                        inline
-                        calendarClassName="!border-0"
+                        rangeColors={["#2563eb"]}
+                        showDateDisplay={false}
                       />
                     )}
                   </div>
@@ -782,20 +917,15 @@ const CarsHeroSection = () => {
 
             {/* Return Date & Time Group */}
             <div className="border-2 border-blue-400 rounded-lg p-3 bg-white/10">
-              <Popover
-                open={calendarOpen && activeTrigger === "return"}
-                onOpenChange={(open) => {
-                  setCalendarOpen(open);
-                  if (open) setActiveTrigger("return");
-                  else setActiveTrigger(null);
-                }}
-              >
+              <Popover open={calendarOpen && activeTrigger === "return"} onOpenChange={(open) => {
+                setCalendarOpen(open);
+                if (open) setActiveTrigger("return");
+                else setActiveTrigger(null);
+              }}>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {/* Return Date */}
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-100 block">
-                      Return date
-                    </label>
+                    <label className="text-xs text-gray-100 block">Return date</label>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -805,7 +935,7 @@ const CarsHeroSection = () => {
                         }}
                         className={cn(
                           "w-full justify-start text-left font-normal bg-white border-0 text-gray-900 h-12 hover:bg-white text-xs sm:text-sm",
-                          !returnDate && "text-gray-400",
+                          !returnDate && "text-gray-400"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-5 w-5 text-gray-400" />
@@ -824,7 +954,7 @@ const CarsHeroSection = () => {
                   />
                 </div>
                 <PopoverContent
-                  className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none"
+                  className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none shadow-2xl border-0 overflow-hidden"
                   align="start"
                   sideOffset={8}
                   side="bottom"
@@ -832,35 +962,21 @@ const CarsHeroSection = () => {
                 >
                   <div className="p-0 m-0">
                     {mounted && (
-                      <DatePicker
-                        selected={returnDate}
-                        onChange={(date) => {
-                          setReturnDate(date);
-                          // If return date is before or equal to pickup date, adjust pickup date
-                          if (date && pickupDate && date <= pickupDate) {
-                            // Set pickup date to previous day before return
-                            const prevDay = new Date(date);
-                            prevDay.setDate(prevDay.getDate() - 1);
-                            if (prevDay >= new Date()) {
-                              setPickupDate(prevDay);
-                            }
-                          }
+                      <DateRange
+                        editableDateInputs={true}
+                        onChange={(item) => {
+                          const selection = item.selection;
+                          setDateRange([selection]);
+                          setPickupDate(selection.startDate);
+                          setReturnDate(selection.endDate);
                         }}
-                        selectsEnd
-                        startDate={pickupDate}
-                        endDate={returnDate}
-                        minDate={
-                          pickupDate
-                            ? new Date(
-                              new Date(pickupDate).setDate(
-                                pickupDate.getDate() + 1,
-                              ),
-                            )
-                            : new Date()
-                        }
-                        monthsShown={isMobile ? 1 : 2}
-                        inline
-                        calendarClassName="!border-0"
+                        moveRangeOnFirstSelection={false}
+                        ranges={dateRange}
+                        months={isMobile ? 1 : 2}
+                        direction="horizontal"
+                        minDate={new Date()}
+                        rangeColors={["#2563eb"]}
+                        showDateDisplay={false}
                       />
                     )}
                   </div>
@@ -871,10 +987,10 @@ const CarsHeroSection = () => {
 
           {/* Period Display */}
           {pickupDate && returnDate && (
-            <div className="relative my-4">
-              <div className="border-t border-dashed border-white/40"></div>
-              <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-[#3B82F6] px-4 sm:px-6">
-                <span className="text-base sm:text-lg font-bold text-white">
+            <div className="relative">
+              <div className="border-t border-dashed border-gray-300"></div>
+              <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-[#3B82F6] px-3 sm:px-4">
+                <span className="text-xs sm:text-sm text-gray-100">
                   Period: {periodDays} {periodDays === 1 ? "day" : "days"}
                 </span>
               </div>

@@ -6,7 +6,7 @@ import { axiosPublic } from "@/lib/api/axios";
 // Fetch locations hook
 export const useLocations = (params = {}) => {
   const { per_page = 15, page = 1, search = "", ...otherParams } = params;
-  
+
   return useQuery({
     queryKey: ["locations", { per_page, page, search, ...otherParams }],
     queryFn: async () => {
@@ -17,15 +17,15 @@ export const useLocations = (params = {}) => {
           Object.entries(otherParams).map(([key, value]) => [key, String(value)])
         ),
       });
-      
+
       // Add search parameter if provided
       if (search) {
         queryParams.append("search", search);
       }
-      
+
       const res = await axiosPublic.get(`/locations?${queryParams.toString()}`);
       const responseData = res.data?.data || res.data;
-      
+
       return {
         locations: responseData.data || [],
         pagination: {
@@ -42,6 +42,29 @@ export const useLocations = (params = {}) => {
     refetchOnWindowFocus: true, // Refetch when window regains focus
     refetchOnMount: true, // Always refetch when component mounts
     gcTime: 0, // No garbage collection time - remove from cache immediately
+  });
+};
+
+// Fetch one-way routes (delivery prices between locations)
+export const useOneWayRoutes = (params = {}) => {
+  const { from_location_id, to_location_id } = params;
+
+  return useQuery({
+    queryKey: ["one-way-routes", { from_location_id, to_location_id }],
+    queryFn: async () => {
+      if (!from_location_id || !to_location_id) return null;
+
+      const res = await axiosPublic.get("/one-way-routes", {
+        params: {
+          from_location_id,
+          to_location_id
+        }
+      });
+
+      return res.data?.data || [];
+    },
+    enabled: !!(from_location_id && to_location_id),
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 };
 

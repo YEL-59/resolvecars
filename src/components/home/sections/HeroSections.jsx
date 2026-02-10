@@ -26,9 +26,10 @@ import { format, differenceInDays, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { bookingStorage } from "@/lib/bookingStorage";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { useLocations } from "@/hooks/locations.hook";
+import { DateRange } from "react-date-range";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+import { useLocations, useOneWayRoutes } from "@/hooks/locations.hook";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -37,10 +38,11 @@ const TimeSelector = ({ value, onChange, label }) => {
   const [open, setOpen] = useState(false);
   const timeOptions = [];
 
-  // Generate time options from 00:00 to 23:00 in 1-hour intervals
+  // Generate time options from 00:00 to 23:30 in 30nd intervals
   for (let hour = 0; hour < 24; hour++) {
-    const timeString = `${String(hour).padStart(2, '0')}:00`;
-    timeOptions.push(timeString);
+    const hourString = String(hour).padStart(2, '0');
+    timeOptions.push(`${hourString}:00`);
+    timeOptions.push(`${hourString}:30`);
   }
 
   return (
@@ -249,6 +251,13 @@ const HeroSections = () => {
   const router = useRouter();
   const [pickupDate, setPickupDate] = useState(null);
   const [returnDate, setReturnDate] = useState(null);
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
+      key: 'selection'
+    }
+  ]);
   const [pickupTime, setPickupTime] = useState("13:00");
   const [returnTime, setReturnTime] = useState("14:00");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -262,8 +271,45 @@ const HeroSections = () => {
   const [pickupLocationPrice, setPickupLocationPrice] = useState(0);
   const [returnLocationPrice, setReturnLocationPrice] = useState(0);
   const [sameStore, setSameStore] = useState(true);
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(true);
   const returnLocationInputRef = useRef(null);
+
+  // Fetch one-way route price
+  const { data: routeData } = useOneWayRoutes({
+    from_location_id: pickupLocationId,
+    to_location_id: sameStore ? pickupLocationId : returnLocationId
+  });
+
+  // Load existing booking data from storage on mount
+  useEffect(() => {
+    const step1 = bookingStorage.getStep("step1") || {};
+    try {
+      if (step1.pickupDate) setPickupDate(new Date(step1.pickupDate));
+      if (step1.dropoffDate) setReturnDate(new Date(step1.dropoffDate));
+      if (step1.pickupLocation) setPickupLocation(step1.pickupLocation);
+      if (step1.pickupLocationId) setPickupLocationId(step1.pickupLocationId);
+      if (step1.dropoffLocation) setReturnLocation(step1.dropoffLocation);
+      if (step1.dropoffLocationId) setReturnLocationId(step1.dropoffLocationId);
+      if (step1.pickupLocationPrice) setPickupLocationPrice(step1.pickupLocationPrice);
+      if (step1.returnLocationPrice) setReturnLocationPrice(step1.returnLocationPrice);
+      if (typeof step1.sameStore === "boolean") setSameStore(step1.sameStore);
+      if (typeof step1.ageConfirmed === "boolean") setAgeConfirmed(step1.ageConfirmed);
+      if (step1.pickup_time) setPickupTime(step1.pickup_time);
+      if (step1.return_time) setReturnTime(step1.return_time);
+
+      if (step1.pickupDate && step1.dropoffDate) {
+        setDateRange([
+          {
+            startDate: new Date(step1.pickupDate),
+            endDate: new Date(step1.dropoffDate),
+            key: 'selection'
+          }
+        ]);
+      }
+    } catch (err) {
+      console.error("Error loading step1 from storage on home page:", err);
+    }
+  }, []);
 
 
   // Office hours: 8:00 to 21:00 (8 AM to 9 PM)
@@ -349,6 +395,13 @@ const HeroSections = () => {
     // Clear all form fields
     setPickupDate(null);
     setReturnDate(null);
+    setDateRange([
+      {
+        startDate: new Date(),
+        endDate: new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
+        key: 'selection'
+      }
+    ]);
     setPickupTime("13:00");
     setReturnTime("14:00");
     setPickupLocation("");
@@ -358,7 +411,7 @@ const HeroSections = () => {
     setPickupLocationPrice(0);
     setReturnLocationPrice(0);
     setSameStore(true);
-    setAgeConfirmed(false);
+    setAgeConfirmed(true);
 
     // Clear UI state
     setCalendarOpen(false);
@@ -441,10 +494,18 @@ const HeroSections = () => {
       }
     };
 
-    // Calculate location fee: same location = 0 (no charge), different = sum of both prices
+    // Calculate location fee
     const finalPickupPrice = pickupLocationPrice || 0;
     const finalReturnPrice = returnLocationPrice || 0;
-    const locationFee = sameStore ? 0 : (finalPickupPrice + finalReturnPrice);
+
+    // Default logic: same location = 0, different = sum of both prices
+    let locationFee = sameStore ? 0 : (finalPickupPrice + finalReturnPrice);
+
+    // If we have a specific one-way route price, use it instead for different locations
+    if (!sameStore && routeData && routeData.length > 0) {
+      const routePrice = parseFloat(routeData[0].price || 0);
+      locationFee = routePrice;
+    }
 
     // Calculate out-of-office fee (40 if any time is outside office hours 8:00-21:00)
     const finalOutOfOfficeFee = outOfOfficeFee || 0;
@@ -516,52 +577,182 @@ const HeroSections = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Add custom styles for react-datepicker
+  // Add custom styles for premium calendar view
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      .react-datepicker {
+      .rdrCalendarWrapper {
         font-family: inherit !important;
-        border: none !important;
-        border-radius: 0.5rem !important;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
-      }
-      .react-datepicker__header {
         background-color: white !important;
-        border-bottom: 1px solid #e5e7eb !important;
-        border-radius: 0.5rem 0.5rem 0 0 !important;
-        padding-top: 0.75rem !important;
+        border-radius: 1.25rem !important;
+        padding: 0.75rem !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+        width: 80vh !important;
       }
-      .react-datepicker__month-container {
+      .rdrMonth {
+        width: 100% !important;
+        padding: 0 0.75rem 0.75rem 0.75rem !important;
+      }
+      .rdrMonthName {
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+        padding: 1.5rem 0 1rem 0 !important;
+        text-align: center !important;
+      }
+      .rdrWeekDays {
         padding: 0 !important;
       }
-      .react-datepicker__day--selected,
-      .react-datepicker__day--in-selecting-range,
-      .react-datepicker__day--in-range {
-        background-color: rgb(37 99 235) !important;
-        color: white !important;
-        border-radius: 0.375rem !important;
+      .rdrWeekDay {
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.7rem !important;
+        padding: 0.5rem 0 !important;
       }
-      .react-datepicker__day--in-selecting-range:not(.react-datepicker__day--in-range) {
-        background-color: rgb(191 219 254) !important;
-        color: rgb(30 58 138) !important;
+      .rdrDays {
+        gap: 0 !important;
       }
-      .react-datepicker__day--range-start,
-      .react-datepicker__day--range-end {
-        background-color: rgb(37 99 235) !important;
-        color: white !important;
+      .rdrDay {
+        height: 3.2rem !important;
+        background: transparent !important;
       }
-      .react-datepicker__day:hover {
-        background-color: rgb(219 234 254) !important;
-        border-radius: 0.375rem !important;
+      .rdrDayNumber {
+        font-weight: 600 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 5 !important;
       }
-      .react-datepicker__day--keyboard-selected {
-        background-color: rgb(219 234 254) !important;
-        color: inherit !important;
+      .rdrDayNumber span {
+        font-size: 0.9rem !important;
+        color: #334155 !important;
+        transition: color 0.1s ease !important;
       }
-      .react-datepicker__day--disabled {
-        color: #d1d5db !important;
-        cursor: not-allowed !important;
+      
+      /* Reset default backgrounds */
+      .rdrSelected, .rdrInRange, .rdrStartEdge, .rdrEndEdge {
+        top: 4px !important;
+        bottom: 4px !important;
+        background: none !important;
+      }
+      
+      /* Start & End Edge Shapes (Pills) */
+      .rdrStartEdge {
+        background: #2563eb !important;
+        border-top-left-radius: 2rem !important;
+        border-bottom-left-radius: 2rem !important;
+        left: 4px !important;
+        right: 0 !important;
+      }
+      
+      .rdrEndEdge {
+        background: #2563eb !important;
+        // border-top-right-radius: 2rem !important;
+        // border-bottom-right-radius: 2rem !important;
+        border-radius: 1rem !important;
+        //left: 0 !important;
+        //right: 4px !important;
+      }
+      
+      /* Single Day Selection (Perfect Circle) */
+      .rdrStartEdge.rdrEndEdge {
+        left: 4px !important;
+        right: 4px !important;
+        border-radius: 2rem !important;
+      }
+      
+      /* Range Highlight */
+      .rdrInRange {
+        background: #8f8d8dff !important;
+        top: 4px !important;
+        bottom: 4px !important;
+        left: 0 !important;
+        right: 0 !important;
+      }
+      
+      /* Text Colors for different states */
+      .rdrDayStartOfMonth .rdrDayInPreview,
+      .rdrDayEndOfMonth .rdrDayInPreview,
+      .rdrDayStartOfWeek .rdrDayInPreview,
+      .rdrDayEndOfWeek .rdrDayInPreview {
+        border-radius: 2rem !important;
+      }
+
+      /* Hover & Preview */
+      .rdrDayInPreview {
+        background: rgba(37, 99, 235, 0.08) !important;
+        border: none !important;
+        top: 4px !important;
+        bottom: 4px !important;
+        border-radius: 2rem !important;
+      }
+      
+      .rdrDayHovered {
+        background: #f8fafc !important;
+        border-radius: 2rem !important;
+      }
+
+      /* Force Text Visibility */
+      .rdrDaySelected .rdrDayNumber span,
+      .rdrStartEdge .rdrDayNumber span,
+      .rdrEndEdge .rdrDayNumber span {
+        color: #ffffff !important;
+      }
+      
+      .rdrInRange .rdrDayNumber span {
+        color: #1e40af !important;
+      }
+
+      .rdrDayPassive .rdrDayNumber span {
+        color: #cbd5e1 !important;
+      }
+
+      .rdrDayDisabled {
+        background-color: transparent !important;
+      }
+      .rdrDayDisabled .rdrDayNumber span {
+        color: #f1f5f9 !important;
+      }
+
+      /* Navigation Styling */
+      .rdrNextPrevButton {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 0.5rem !important;
+        margin: 0 0.5rem !important;
+      }
+      .rdrNextPrevButton:hover {
+        background: #f1f5f9 !important;
+      }
+
+      /* Dropdowns */
+      .rdrMonthAndYearPickers select {
+        color: #1e293b !important;
+        font-weight: 700 !important;
+        border-radius: 0.5rem !important;
+        padding: 0.5rem 1.5rem 0.5rem 0.5rem !important;
+      }
+      
+      /* Hide "static ranges" */
+      .rdrStaticRanges {
+        display: none !important;
+      }
+      
+      /* Mobile adjustments */
+      @media (max-width: 640px) {
+        .rdrMonth {
+           width: 100% !important;
+           padding: 0 0.25rem 0.25rem 0.25rem !important;
+        }
+        .rdrCalendarWrapper {
+          width: 100% !important;
+          padding: 0.5rem !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -589,7 +780,7 @@ const HeroSections = () => {
       <div className="relative z-10 container mx-auto px-4 text-center text-[#FAFAFA]">
         {/* Hero Text */}
         <div className="py-10 md:py-0">
-          <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold mb-6">
+          {/* <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold mb-6">
             Premium Car Rental
           </h1>
           <h2 className="text-3xl md:text-6xl lg:text-7xl font-semibold mb-6 text-primary">
@@ -599,10 +790,10 @@ const HeroSections = () => {
             Experience luxury and comfort with our premium fleet. From business
             trips to weekend getaways, we have the perfect car for every
             journey.
-          </p>
+          </p> */}
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          {/* <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Link href="/cars">   <Button
               size="lg"
               className="bg-primary hover:bg-primary/90 text-white px-8 py-3 text-lg"
@@ -619,7 +810,7 @@ const HeroSections = () => {
               Learn More
             </Button>
             </Link>
-          </div>
+          </div> */}
 
           {/* Search Form */}
           <div className="bg-[#3B82F6] p-4 sm:p-6 rounded-xl max-w-7xl mx-auto text-gray-900">
@@ -731,7 +922,7 @@ const HeroSections = () => {
                       />
                     </div>
                     <PopoverContent
-                      className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none"
+                      className="w-auto p-0 z-50 max-w-[150vw] sm:max-w-none shadow-2xl border-0 overflow-hidden"
                       align="start"
                       sideOffset={8}
                       side="bottom"
@@ -739,25 +930,21 @@ const HeroSections = () => {
                     >
                       <div className="overflow-x-auto p-0 m-0">
                         {mounted && (
-                          <DatePicker
-                            selected={pickupDate}
-                            onChange={(date) => {
-                              setPickupDate(date);
-                              // If pickup date is after return date, reset return date
-                              if (date && returnDate && date >= returnDate) {
-                                // Set return date to next day after pickup
-                                const nextDay = new Date(date);
-                                nextDay.setDate(nextDay.getDate() + 1);
-                                setReturnDate(nextDay);
-                              }
+                          <DateRange
+                            editableDateInputs={true}
+                            onChange={(item) => {
+                              const selection = item.selection;
+                              setDateRange([selection]);
+                              setPickupDate(selection.startDate);
+                              setReturnDate(selection.endDate);
                             }}
-                            selectsStart
-                            startDate={pickupDate}
-                            endDate={returnDate}
+                            moveRangeOnFirstSelection={false}
+                            ranges={dateRange}
+                            months={isMobile ? 1 : 2}
+                            direction="horizontal"
                             minDate={new Date()}
-                            monthsShown={isMobile ? 1 : 2}
-                            inline
-                            calendarClassName="!border-0"
+                            rangeColors={["#2563eb"]}
+                            showDateDisplay={false}
                           />
                         )}
                       </div>
@@ -804,7 +991,7 @@ const HeroSections = () => {
                       />
                     </div>
                     <PopoverContent
-                      className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none"
+                      className="w-auto p-0 z-50 max-w-[95vw] sm:max-w-none shadow-2xl border-0 overflow-hidden"
                       align="start"
                       sideOffset={8}
                       side="bottom"
@@ -812,27 +999,21 @@ const HeroSections = () => {
                     >
                       <div className="p-0 m-0">
                         {mounted && (
-                          <DatePicker
-                            selected={returnDate}
-                            onChange={(date) => {
-                              setReturnDate(date);
-                              // If return date is before or equal to pickup date, adjust pickup date
-                              if (date && pickupDate && date <= pickupDate) {
-                                // Set pickup date to previous day before return
-                                const prevDay = new Date(date);
-                                prevDay.setDate(prevDay.getDate() - 1);
-                                if (prevDay >= new Date()) {
-                                  setPickupDate(prevDay);
-                                }
-                              }
+                          <DateRange
+                            editableDateInputs={true}
+                            onChange={(item) => {
+                              const selection = item.selection;
+                              setDateRange([selection]);
+                              setPickupDate(selection.startDate);
+                              setReturnDate(selection.endDate);
                             }}
-                            selectsEnd
-                            startDate={pickupDate}
-                            endDate={returnDate}
-                            minDate={pickupDate ? new Date(new Date(pickupDate).setDate(pickupDate.getDate() + 1)) : new Date()}
-                            monthsShown={isMobile ? 1 : 2}
-                            inline
-                            calendarClassName="!border-0"
+                            moveRangeOnFirstSelection={false}
+                            ranges={dateRange}
+                            months={isMobile ? 1 : 2}
+                            direction="horizontal"
+                            minDate={new Date()}
+                            rangeColors={["#2563eb"]}
+                            showDateDisplay={false}
                           />
                         )}
                       </div>
