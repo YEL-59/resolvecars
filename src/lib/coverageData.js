@@ -107,15 +107,15 @@ export const extrasData = [
     pricingType: "per_booking", // per_booking or per_day
     category: "coverage",
   },
-  {
-    id: "foundationDonation",
-    name: "Othman Khtri Foundation Donation",
-    description: "Get on board with our global social and humanitarian project.",
-    price: 0, // User selects amount
-    pricingType: "per_booking",
-    category: "charity",
-    donationOptions: [1, 5, 10, 20, 0], // 0 means "Other"
-  },
+  // {
+  //   id: "foundationDonation",
+  //   name: "Othman Khtri Foundation Donation",
+  //   description: "Get on board with our global social and humanitarian project.",
+  //   price: 0, // User selects amount
+  //   pricingType: "per_booking",
+  //   category: "charity",
+  //   donationOptions: [1, 5, 10, 20, 0], // 0 means "Other"
+  // },
   {
     id: "petPack",
     name: "Pet Pack",

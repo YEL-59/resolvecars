@@ -27,12 +27,12 @@ export const useCreateBooking = () => {
           const errorData = error.response.data;
           const errors = errorData.errors || {};
           const message = errorData.message || "Validation failed";
-          
+
           // Log detailed error information
           console.error("Booking validation errors:", errors);
           console.error("Error message:", message);
           console.error("Full error response:", errorData);
-          
+
           // Build detailed error message
           let errorMessage = message;
           if (Object.keys(errors).length > 0) {
@@ -44,13 +44,13 @@ export const useCreateBooking = () => {
               .join("\n");
             errorMessage = `${message}\n\n${errorDetails}`;
           }
-          
+
           // Create enhanced error object
           const enhancedError = new Error(errorMessage);
           enhancedError.response = error.response;
           enhancedError.errors = errors;
           enhancedError.message = errorMessage;
-          
+
           throw enhancedError;
         }
         throw error;
@@ -58,12 +58,12 @@ export const useCreateBooking = () => {
     },
     onError: (error) => {
       // Show toast notification with error details
-      const errorMessage = error.message || 
-        error.response?.data?.message || 
+      const errorMessage = error.message ||
+        error.response?.data?.message ||
         "Failed to create booking. Please check your input and try again.";
-      
+
       toast.error(errorMessage);
-      
+
       // Log full error for debugging
       console.error("Booking creation error:", {
         message: error.message,
