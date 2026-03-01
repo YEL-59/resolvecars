@@ -1,7 +1,8 @@
 import axios from "axios";
 
 // Base URL for the API
-const BASE_URL = "https://resolvecars.thesyndicates.team/api/v1";
+const BASE_URL = "https://admin.resolvecars.com/api/v1";
+//"https://resolvecars.thesyndicates.team/api/v1";
 
 //"https://resolvecars.reigeeky.com/api/v1";
 
