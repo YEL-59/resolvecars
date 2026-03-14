@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { axiosPrivate } from "@/lib/api/axios";
+import axiosPublic, { axiosPrivate } from "@/lib/api/axios";
 
 /**
  * Fetch user bookings with pagination
@@ -23,11 +23,11 @@ export const useBookings = (params = {}) => {
         ),
       });
 
-      const res = await axiosPrivate.get(`/bookings?${queryParams.toString()}`);
-      
+      const res = await axiosPublic.get(`/bookings?${queryParams.toString()}`);
+
       // Handle response structure: { success: true, data: {...} }
       const responseData = res.data?.data || res.data;
-      
+
       return {
         bookings: responseData.data || [],
         pagination: {

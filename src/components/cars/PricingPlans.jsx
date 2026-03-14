@@ -58,8 +58,8 @@ export default function PricingPlans() {
                 <CardContent>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-2xl font-bold">${total}</p>
-                      <p className="text-xs text-gray-500">${p.perDay}/day × {days}</p>
+                      <p className="text-2xl font-bold">{total} €</p>
+                      <p className="text-xs text-gray-500">{p.perDay} €/day × {days}</p>
                     </div>
                     <Button onClick={() => selectPlan(p.id)} className="bg-primary hover:bg-primary/90 text-white">
                       Continue

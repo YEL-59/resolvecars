@@ -69,7 +69,7 @@ const Footer = () => {
               <Link href="/contact" className="block hover:text-white/80 transition-colors">
                 Customer Service
               </Link>
-              <Link href="/privacy" className="block hover:text-white/80 transition-colors">
+              <Link href="/privacy-policy" className="block hover:text-white/80 transition-colors">
                 Privacy Policy
               </Link>
               <Link href="/legal" className="block hover:text-white/80 transition-colors">
@@ -134,10 +134,10 @@ const Footer = () => {
               © 2025 @ ResolveCars.com All rights reserved
             </p>
             <div className="flex space-x-6 text-sm opacity-75">
-              <Link href="/terms" className="hover:text-white transition-colors">
+              <Link href="/terms-and-conditions" className="hover:text-white transition-colors">
                 Terms of Service
               </Link>
-              <Link href="/privacy" className="hover:text-white transition-colors">
+              <Link href="/privacy-policy" className="hover:text-white transition-colors">
                 Privacy Policy
               </Link>
               <Link href="/cookies" className="hover:text-white transition-colors">

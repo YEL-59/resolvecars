@@ -124,7 +124,7 @@ export default function BookingSummary({ selectedCar, form }) {
               <Car className="w-4 h-4 text-primary" />
               Base rental ({days} {days > 1 ? "days" : "day"})
             </span>
-            <span>${(dailyRate * days).toFixed(2)}</span>
+            <span>{(dailyRate * days).toFixed(2)} €</span>
           </div>
 
           {/* Protection Plan */}
@@ -136,7 +136,7 @@ export default function BookingSummary({ selectedCar, form }) {
               return (
                 <div className="flex justify-between text-sm">
                   <span>Protection Plan ({planNames[step1.protectionPlan || "basic"]})</span>
-                  <span>${(protectionPlan * days).toFixed(2)}</span>
+                  <span>{(protectionPlan * days).toFixed(2)} €</span>
                 </div>
               );
             }
@@ -168,7 +168,7 @@ export default function BookingSummary({ selectedCar, form }) {
                       return (
                         <div key={extraId} className="flex justify-between text-sm">
                           <span>{extrasNames[extraId] || extraId}</span>
-                          <span>${price.toFixed(2)}</span>
+                          <span>{price.toFixed(2)} €</span>
                         </div>
                       );
                     }
@@ -185,23 +185,23 @@ export default function BookingSummary({ selectedCar, form }) {
           {/* Subtotal */}
           <div className="flex justify-between text-sm">
             <span>Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{subtotal.toFixed(2)} €</span>
           </div>
 
           {/* Tax */}
           <div className="flex justify-between text-sm">
             <span>Tax (8%)</span>
-            <span>${tax.toFixed(2)}</span>
+            <span>{tax.toFixed(2)} €</span>
           </div>
 
           {/* Total */}
           <div className="flex justify-between pt-3 text-base font-semibold text-red-600 border-t border-rose-100">
             <span>Total</span>
-            <span>${total.toFixed(2)}</span>
+            <span>{total.toFixed(2)} €</span>
           </div>
 
           <p className="text-xs text-gray-500 mt-1">
-            ${(total / days).toFixed(2)} per day avg
+            {(total / days).toFixed(2)} € per day avg
           </p>
 
           {/* Secure Payment Section */}

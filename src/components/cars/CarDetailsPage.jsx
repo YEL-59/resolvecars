@@ -171,14 +171,14 @@ export default function CarDetailsPage({ carId }) {
       details: {
         pricing: {
           dailyRate: 19,
-          securityDeposit: "$200",
+          securityDeposit: "200 €",
           cancellation: "Free",
         },
         features: [
           "Collision Damage Waiver (CDW)",
           "Theft Protection (TP)",
-          "Third Party Liability up to $1M",
-          "Reduced excess to $500",
+          "Third Party Liability up to 1M €",
+          "Reduced excess to 500 €",
           "Personal Accident Insurance",
         ],
         cancellationPolicy: "Cancel up to 24 hours before pickup",
@@ -199,7 +199,7 @@ export default function CarDetailsPage({ carId }) {
         features: [
           "Full Collision Damage Waiver",
           "Complete Theft Protection",
-          "Third Party Liability up to $5M",
+          "Third Party Liability up to 5M €",
           "Zero excess - no deductible",
           "Personal Effects Coverage",
           "Emergency Medical Coverage",
@@ -403,20 +403,20 @@ export default function CarDetailsPage({ carId }) {
                           <div className="space-y-2 mb-4">
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-600">Base rental ({rentalDays} {rentalDays === 1 ? "day" : "days"})</span>
-                              <span className="font-medium">${totals.base.toFixed(2)}</span>
+                              <span className="font-medium">{totals.base.toFixed(2)} €</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Protection ({plan.id === "basic" ? "Included" : `$${plan.dailyPrice}/day`})</span>
-                              <span className="font-medium">{plan.id === "basic" ? "Free" : `$${totals.protection.toFixed(2)}`}</span>
+                              <span className="text-gray-600">Protection ({plan.id === "basic" ? "Included" : `${plan.dailyPrice} €/day`})</span>
+                              <span className="font-medium">{plan.id === "basic" ? "Free" : `${totals.protection.toFixed(2)} €`}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-600">Tax (8%)</span>
-                              <span className="font-medium">${totals.tax.toFixed(2)}</span>
+                              <span className="font-medium">{totals.tax.toFixed(2)} €</span>
                             </div>
                             <div className="border-t pt-2 mt-2">
                               <div className="flex justify-between items-center">
                                 <span className="font-bold text-lg">Total</span>
-                                <span className="font-bold text-xl text-red-600">${totals.total.toFixed(2)}</span>
+                                <span className="font-bold text-xl text-red-600">{totals.total.toFixed(2)} €</span>
                               </div>
                             </div>
                           </div>
