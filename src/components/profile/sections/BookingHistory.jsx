@@ -10,7 +10,7 @@ import {
   MapPin,
   Car,
   Package,
-  DollarSign,
+  Euro,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -252,7 +252,7 @@ const BookingHistory = () => {
                       {/* Pricing Breakdown */}
                       <div className="space-y-4">
                         <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                          <DollarSign className="w-5 h-5 text-rose-600" />
+                          <Euro className="w-5 h-5 text-rose-600" />
                           Price Breakdown
                         </h3>
                         <div className="space-y-2 text-sm">

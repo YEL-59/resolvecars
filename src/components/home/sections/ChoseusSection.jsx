@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Clock, DollarSign, Headphones } from "lucide-react";
+import { Shield, Clock, Euro, Headphones } from "lucide-react";
 
 const ChoseusSection = () => {
   const features = [
@@ -19,7 +19,7 @@ const ChoseusSection = () => {
     },
     {
       id: 3,
-      icon: DollarSign,
+      icon: Euro,
       title: "Affordable Price",
       description:
         "Enjoy competitive pricing with no hidden fees and transparent cost breakdown.",

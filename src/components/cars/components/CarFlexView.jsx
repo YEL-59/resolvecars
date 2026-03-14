@@ -178,9 +178,9 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
               price_per_day: parseFloat(
                 car.pricing.rental_calculation.daily_rate
               ),
-              display_price: `$${parseFloat(
+              display_price: `${parseFloat(
                 car.pricing.rental_calculation.daily_rate
-              ).toFixed(2)}`,
+              ).toFixed(2)} €`,
               start_date: null,
               end_date: null,
             };
@@ -191,7 +191,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
               price_per_day: parseFloat(car.current_price.price_per_day || 0),
               display_price:
                 car.current_price.display_price ||
-                `$${parseFloat(car.current_price.price_per_day || 0).toFixed(2)}`,
+                `${parseFloat(car.current_price.price_per_day || 0).toFixed(2)} €`,
               start_date: car.current_price.start_date,
               end_date: car.current_price.end_date,
               notes: car.current_price.notes,
@@ -214,7 +214,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                 price_per_day: parseFloat(activePrice.price_per_day || 0),
                 display_price:
                   activePrice.display_price ||
-                  `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
+                  `${parseFloat(activePrice.price_per_day || 0).toFixed(2)} €`,
                 start_date: activePrice.start_date,
                 end_date: activePrice.end_date,
                 date_range: activePrice.date_range,
@@ -236,7 +236,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                 price_per_day: parseFloat(activePrice.price_per_day || 0),
                 display_price:
                   activePrice.display_price ||
-                  `$${parseFloat(activePrice.price_per_day || 0).toFixed(2)}`,
+                  `${parseFloat(activePrice.price_per_day || 0).toFixed(2)} €`,
                 start_date: activePrice.start_date,
                 end_date: activePrice.end_date,
               };
@@ -248,7 +248,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
               price_per_day: parseFloat(dynamicCarPrice.price_per_day || 0),
               display_price:
                 dynamicCarPrice.display_price ||
-                `$${parseFloat(dynamicCarPrice.price_per_day || 0).toFixed(2)}`,
+                `${parseFloat(dynamicCarPrice.price_per_day || 0).toFixed(2)} €`,
               start_date: dynamicCarPrice.start_date,
               end_date: dynamicCarPrice.end_date,
             };
@@ -258,7 +258,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
             const priceValue = car["car price"] || car.price;
             basePriceData = {
               price_per_day: parseFloat(priceValue),
-              display_price: `$${parseFloat(priceValue).toFixed(2)}`,
+              display_price: `${parseFloat(priceValue).toFixed(2)} €`,
               start_date: null,
               end_date: null,
             };
@@ -372,12 +372,12 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               </div>
                               <div className="text-right">
                                 <span className="text-xl font-bold text-gray-900">
-                                  {activeCarPrice.display_price ||
-                                    `$${
-                                      activeCarPrice.price_per_day?.toFixed(
-                                        2
-                                      ) || "0.00"
-                                    }`}
+                                    {activeCarPrice.display_price ||
+                                      `${
+                                        activeCarPrice.price_per_day?.toFixed(
+                                          2
+                                        ) || "0.00"
+                                      } €`}
                                 </span>
                                 <p className="text-xs text-gray-500 font-normal mt-0.5">
                                   {formatDateDisplay(activeCarPrice.start_date)}
@@ -433,11 +433,10 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                                       Base Rental Cost:
                                     </span>
                                     <span className="text-gray-900 font-semibold">
-                                      $
                                       {parseFloat(
                                         car.pricing.rental_calculation
                                           .base_rental_cost || 0
-                                      ).toFixed(2)}
+                                      ).toFixed(2)} €
                                     </span>
                                   </div>
                                   {car.pricing.rental_calculation.rental_days && (
@@ -668,7 +667,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Excess Amount</span>
                                                     <span className="text-xs font-medium text-gray-600">Your max liability</span>
                                                   </div>
-                                                  <span className="text-sm font-black text-gray-900">{plan.excess} EUR</span>
+                                                  <span className="text-sm font-black text-gray-900">{plan.excess} €</span>
                                                 </div>
                                               )}
                                               {parseFloat(plan.deposit) > 0 && (
@@ -677,7 +676,7 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Security Deposit</span>
                                                     <span className="text-xs font-medium text-gray-600">Held on your card</span>
                                                   </div>
-                                                  <span className="text-sm font-black text-gray-900">{plan.deposit} EUR</span>
+                                                  <span className="text-sm font-black text-gray-900">{plan.deposit} €</span>
                                                 </div>
                                               )}
                                             </div>
@@ -711,15 +710,15 @@ function CarFlexViewContent({ cars, pickupDate, returnDate, rentalDays }) {
                               {plan.discount > 0 ? (
                                 <>
                                   <p className="text-sm text-gray-500 line-through font-medium">
-                                    ${(parseFloat(plan.originalPrice || 0) + parseFloat(car["car price"] || car.price || 0)).toFixed(2)}
+                                    {(parseFloat(plan.originalPrice || 0) + parseFloat(car["car price"] || car.price || 0)).toFixed(2)} €
                                   </p>
                                   <p className="text-3xl font-bold text-gray-900">
-                                    ${parseFloat(plan.currentPrice).toFixed(2)}
+                                    {parseFloat(plan.currentPrice).toFixed(2)} €
                                   </p>
                                 </>
                               ) : (
                                 <p className="text-3xl font-bold text-gray-900">
-                                  ${parseFloat(plan.currentPrice).toFixed(2)}
+                                   {parseFloat(plan.currentPrice).toFixed(2)} €
                                 </p>
                               )}
                               <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">

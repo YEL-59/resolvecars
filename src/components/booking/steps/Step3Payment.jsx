@@ -10,6 +10,7 @@ import { ArrowLeft, ArrowRight, CreditCard, CheckCircle2 } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useMemo, useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { extrasData } from "@/lib/coverageData";
 import { useAddons } from "@/hooks/addons.hook";
 import { useCreatePaymentIntent } from "@/hooks/payment.hook";
@@ -426,8 +427,8 @@ export default function Step3Payment({ onPrev, onNext }) {
         // Get form values
         const paymentMethod = form.watch("paymentMethod");
         const termsAccepted = form.watch("termsAccepted");
-        const newsletterSubscribe = form.watch("newsletterSubscribe");
-        const clubOk = form.watch("clubOk");
+        // const newsletterSubscribe = form.watch("newsletterSubscribe");
+        // const clubOk = form.watch("clubOk");
 
         // Validate payment method selection
         if (!paymentMethod) {
@@ -435,21 +436,21 @@ export default function Step3Payment({ onPrev, onNext }) {
             return;
         }
 
-        // Validate all 3 checkboxes are checked
+        // Validate terms and privacy are accepted
         if (!termsAccepted) {
-            toast.error("Please accept the General Terms and Conditions to continue");
+            toast.error("Please accept the General Terms and Conditions and the Privacy Policy to continue");
             return;
         }
 
-        if (!newsletterSubscribe) {
-            toast.error("Please accept the newsletter subscription to continue");
-            return;
-        }
+        // if (!newsletterSubscribe) {
+        //     toast.error("Please accept the newsletter subscription to continue");
+        //     return;
+        // }
 
-        if (!clubOk) {
-            toast.error("Please accept the Club OK terms to continue");
-            return;
-        }
+        // if (!clubOk) {
+        //     toast.error("Please accept the Club OK terms to continue");
+        //     return;
+        // }
 
         // If credit card is selected, process Stripe payment
         if (paymentMethod === "credit") {
@@ -871,13 +872,20 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </FormControl>
                                             <div className="space-y-1 leading-none">
                                                 <FormLabel className="text-sm font-normal">
-                                                    I have read and accept the General Terms and Conditions for Vehicle Rental and the Privacy Policy.
+                                                    I have read and accept the{" "}
+                                                    <Link href="/terms-and-conditions" target="_blank" className="text-blue-600 hover:underline font-medium">
+                                                        General Terms and Conditions
+                                                    </Link>{" "}
+                                                    for Vehicle Rental and the{" "}
+                                                    <Link href="/privacy-policy" target="_blank" className="text-blue-600 hover:underline font-medium">
+                                                        Privacy Policy
+                                                    </Link>.
                                                 </FormLabel>
                                             </div>
                                         </FormItem>
                                     )}
                                 />
-
+                                {/* 
                                 <FormField
                                     control={form.control}
                                     name="newsletterSubscribe"
@@ -896,9 +904,9 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </div>
                                         </FormItem>
                                     )}
-                                />
+                                /> */}
 
-                                <FormField
+                                {/* <FormField
                                     control={form.control}
                                     name="clubOk"
                                     render={({ field }) => (
@@ -916,7 +924,7 @@ export default function Step3Payment({ onPrev, onNext }) {
                                             </div>
                                         </FormItem>
                                     )}
-                                />
+                                /> */}
                             </div>
 
                             {/* Free Cancellation Banner */}

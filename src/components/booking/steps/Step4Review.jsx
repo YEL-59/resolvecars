@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, User, CalendarDays, Car, CreditCard, Package, DollarSign } from "lucide-react";
+import { CheckCircle2, User, CalendarDays, Car, CreditCard, Package, Euro } from "lucide-react";
 import { bookingStorage } from "@/lib/bookingStorage";
 import { useMemo } from "react";
 import Image from "next/image";
@@ -317,7 +317,7 @@ export default function Step4Review({ onPrev }) {
                 {/* Price Summary */}
                 <div className="mt-4 rounded-lg border border-rose-200 bg-white p-4">
                     <div className="flex items-center gap-2 mb-3">
-                        <DollarSign className="h-4 w-4 text-rose-600" />
+                        <Euro className="h-4 w-4 text-rose-600" />
                         <h3 className="text-sm font-medium text-rose-900">Price Summary</h3>
                     </div>
                     <div className="space-y-2 text-sm">

@@ -1031,7 +1031,7 @@ const CarsHeroSection = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap gap-3 w-full md:w-auto">
               {/* Clear Button - Show if any field has data */}
               {(pickupDate ||
                 returnDate ||
